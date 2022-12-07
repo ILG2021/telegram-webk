@@ -238,6 +238,11 @@ export default class DropdownHover extends EventListenerBase<{
     // animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   };
 
+  public clearIgnore() {
+    this.ignoreMouseOut.clear();
+    this.ignoreButtons.clear();
+  }
+
   public isActive() {
     return this.element.classList.contains('active');
   }

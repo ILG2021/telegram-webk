@@ -5,7 +5,7 @@
  */
 
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
+import { attachClickEvent } from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import GROUP_CALL_STATE from '../lib/calls/groupCallState';
 import rootScope from '../lib/rootScope';
@@ -25,13 +25,14 @@ import CallDescriptionElement from './call/description';
 import PopupCall from './call';
 import GroupCallMicrophoneIconMini from './groupCall/microphoneIconMini';
 import CallInstance from '../lib/calls/callInstance';
-import {AppManagers} from '../lib/appManagers/managers';
+import { AppManagers } from '../lib/appManagers/managers';
 import groupCallsController from '../lib/calls/groupCallsController';
 import StreamManager from '../lib/calls/streamManager';
 import callsController from '../lib/calls/callsController';
+import { toTelegramSource } from '../lib/calls/utils';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
-  switch(state) {
+  switch (state) {
     case CALL_STATE.CLOSING:
     case CALL_STATE.CLOSED:
       return GROUP_CALL_STATE.CLOSED;
@@ -64,14 +65,14 @@ export default class TopbarCall {
   ) {
     const listenerSetter = this.listenerSetter = new ListenerSetter();
 
-    listenerSetter.add(callsController)('instance', ({instance}) => {
-      if(!this.instance) {
+    listenerSetter.add(callsController)('instance', ({ instance }) => {
+      if (!this.instance) {
         this.updateInstance(instance);
       }
     });
 
     listenerSetter.add(callsController)('accepting', (instance) => {
-      if(this.instance !== instance) {
+      if (this.instance !== instance) {
         this.updateInstance(instance);
       }
     });
@@ -82,22 +83,57 @@ export default class TopbarCall {
 
     listenerSetter.add(rootScope)('group_call_update', (groupCall) => {
       const instance = groupCallsController.groupCall;
-      if(instance?.id === groupCall.id) {
+      if (instance?.id === groupCall.id) {
         this.updateInstance(instance);
       }
     });
 
-    listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({amplitudes, type}) => {
-      const {weave} = this;
-      if(!amplitudes.length || !weave/*  || type !== 'input' */) return;
+    listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({ amplitudes, type }) => {
+      const { weave } = this;
+      if (!amplitudes.length || !weave/*  || type !== 'input' */) return;
 
       let max = 0;
-      for(let i = 0; i < amplitudes.length; ++i) {
-        const {type, value} = amplitudes[i];
+      for (let i = 0; i < amplitudes.length; ++i) {
+        const { type, value } = amplitudes[i];
         max = value > max ? value : max;
       }
 
       weave.setAmplitude(max);
+
+      const currentGroupCall = groupCallsController.groupCall;
+      if (currentGroupCall) {
+        const { isSpeakingMap, id } = currentGroupCall;
+
+        for (let i = 0; i < amplitudes.length; i++) {
+          const { type, source, value } = amplitudes[i];
+
+          let params = isSpeakingMap.get(source);
+          if (!params) {
+            params = { isSpeaking: false, speakingTimer: null, cancelSpeakingTimer: null };
+            isSpeakingMap.set(source, params);
+          }
+
+          const isSpeaking = value > 0.2;
+          if (isSpeaking !== params.isSpeaking) {
+            params.isSpeaking = isSpeaking;
+            if (isSpeaking) {
+              clearTimeout(params.cancelSpeakingTimer);
+              params.speakingTimer = setTimeout(() => {
+                if (params.isSpeaking) {
+                  currentGroupCall.setIsSpeaking(parseInt(source), true)
+                }
+              }, 150);
+            } else {
+              clearTimeout(params.cancelSpeakingTimer);
+              params.cancelSpeakingTimer = setTimeout(() => {
+                if (!params.isSpeaking) {
+                  currentGroupCall.setIsSpeaking(parseInt(source), false)
+                }
+              }, 1000);
+            }
+          }
+        }
+      }
     });
   }
 
@@ -106,10 +142,10 @@ export default class TopbarCall {
   };
 
   private clearCurrentInstance() {
-    if(!this.instance) return;
+    if (!this.instance) return;
     this.center.textContent = '';
 
-    if(this.currentDescription) {
+    if (this.currentDescription) {
       this.currentDescription.detach();
       this.currentDescription = undefined;
     }
@@ -119,13 +155,13 @@ export default class TopbarCall {
   }
 
   private updateInstance(instance: TopbarCall['instance']) {
-    if(this.construct) {
+    if (this.construct) {
       this.construct();
       this.construct = undefined;
     }
 
     const isChangingInstance = this.instance !== instance;
-    if(isChangingInstance) {
+    if (isChangingInstance) {
       this.clearCurrentInstance();
 
       this.instance = instance;
@@ -133,7 +169,7 @@ export default class TopbarCall {
 
       this.instanceListenerSetter.add(instance as GroupCallInstance)('state', this.onState);
 
-      if(instance instanceof GroupCallInstance) {
+      if (instance instanceof GroupCallInstance) {
         this.currentDescription = this.groupCallDescription;
       } else {
         this.currentDescription = this.callDescription;
@@ -146,13 +182,13 @@ export default class TopbarCall {
     const isMuted = this.instance.isMuted;
     const state = instance instanceof GroupCallInstance ? instance.state : convertCallStateToGroupState(instance.connectionState, isMuted);
 
-    const {weave} = this;
+    const { weave } = this;
 
     weave.componentDidMount();
 
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
-    if((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
-      if(isClosed) {
+    if ((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
+      if (isClosed) {
         weave.setAmplitude(0);
       }
 
@@ -160,10 +196,10 @@ export default class TopbarCall {
         weave.componentWillUnmount();
 
         this.clearCurrentInstance();
-      }: undefined);
+      } : undefined);
     }
 
-    if(isClosed) {
+    if (isClosed) {
       return;
     }
 
@@ -192,15 +228,15 @@ export default class TopbarCall {
   }
 
   private setTitle(instance: TopbarCall['instance']) {
-    if(instance instanceof GroupCallInstance) {
+    if (instance instanceof GroupCallInstance) {
       return this.groupCallTitle.update(instance);
     } else {
-      replaceContent(this.center, new PeerTitle({peerId: instance.interlocutorUserId.toPeerId()}).element);
+      replaceContent(this.center, new PeerTitle({ peerId: instance.interlocutorUserId.toPeerId() }).element);
     }
   }
 
   private construct() {
-    const {listenerSetter} = this;
+    const { listenerSetter } = this;
     const container = this.container = document.createElement('div');
     container.classList.add('sidebar-header', CLASS_NAME + '-container');
 
@@ -220,7 +256,7 @@ export default class TopbarCall {
     attachClickEvent(mute, (e) => {
       cancelEvent(e);
       throttledMuteClick();
-    }, {listenerSetter});
+    }, { listenerSetter });
 
     const center = this.center = document.createElement('div');
     center.classList.add(CLASS_NAME + '-center');
@@ -239,34 +275,34 @@ export default class TopbarCall {
     attachClickEvent(end, (e) => {
       cancelEvent(e);
 
-      const {instance} = this;
-      if(!instance) {
+      const { instance } = this;
+      if (!instance) {
         return;
       }
 
-      if(instance instanceof GroupCallInstance) {
+      if (instance instanceof GroupCallInstance) {
         instance.hangUp();
       } else {
         instance.hangUp('phoneCallDiscardReasonHangup');
       }
-    }, {listenerSetter});
+    }, { listenerSetter });
 
     attachClickEvent(container, () => {
-      if(this.instance instanceof GroupCallInstance) {
-        if(PopupElement.getPopups(PopupGroupCall).length) {
+      if (this.instance instanceof GroupCallInstance) {
+        if (PopupElement.getPopups(PopupGroupCall).length) {
           return;
         }
 
         new PopupGroupCall().show();
-      } else if(this.instance instanceof CallInstance) {
+      } else if (this.instance instanceof CallInstance) {
         const popups = PopupElement.getPopups(PopupCall);
-        if(popups.find((popup) => popup.getCallInstance() === this.instance)) {
+        if (popups.find((popup) => popup.getCallInstance() === this.instance)) {
           return;
         }
 
         new PopupCall(this.instance).show();
       }
-    }, {listenerSetter});
+    }, { listenerSetter });
 
     container.append(left, center, right);
 

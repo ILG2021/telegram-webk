@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '../appManagers/appGroupCallsManager';
-import {IS_SAFARI} from '../../environment/userAgent';
+import type { GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from '../appManagers/appGroupCallsManager';
+import { IS_SAFARI } from '../../environment/userAgent';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import safeAssign from '../../helpers/object/safeAssign';
 import throttle from '../../helpers/schedulers/throttle';
-import {GroupCall, GroupCallParticipant} from '../../layer';
-import {logger} from '../logger';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import { GroupCall, GroupCallParticipant } from '../../layer';
+import { logger } from '../logger';
+import { NULL_PEER_ID } from '../mtproto/mtproto_config';
 import rootScope from '../rootScope';
-import CallInstanceBase, {TryAddTrackOptions} from './callInstanceBase';
+import CallInstanceBase, { TryAddTrackOptions } from './callInstanceBase';
 import GroupCallConnectionInstance from './groupCallConnectionInstance';
 import GROUP_CALL_STATE from './groupCallState';
 import getScreenConstraints from './helpers/getScreenConstraints';
@@ -22,12 +22,12 @@ import getStream from './helpers/getStream';
 import getVideoConstraints from './helpers/getVideoConstraints';
 import stopTrack from './helpers/stopTrack';
 import localConferenceDescription from './localConferenceDescription';
-import {WebRTCLineType} from './sdpBuilder';
+import { WebRTCLineType } from './sdpBuilder';
 import StreamManager from './streamManager';
-import {Ssrc} from './types';
+import { Ssrc } from './types';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
-import {AppManagers} from '../appManagers/managers';
-import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from './groupCallsController';
+import { AppManagers } from '../appManagers/managers';
+import { generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant } from './groupCallsController';
 
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
@@ -38,7 +38,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public handleUpdateGroupCallParticipants: boolean;
   public updatingSdp: boolean;
   public isSpeakingMap: Map<any, any>;
-  public connections: {[k in GroupCallConnectionType]?: GroupCallConnectionInstance};
+  public connections: { [k in GroupCallConnectionType]?: GroupCallConnectionInstance };
   public groupCall: GroupCall;
   public participant: GroupCallParticipant;
 
@@ -65,15 +65,15 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     safeAssign(this, options);
 
-    if(!this.log) {
+    if (!this.log) {
       this.log = logger('GROUP-CALL');
     }
 
-    if(!this.connections) {
+    if (!this.connections) {
       this.connections = {};
     }
 
-    if(!this.isSpeakingMap) {
+    if (!this.isSpeakingMap) {
       this.isSpeakingMap = new Map();
     }
 
@@ -85,7 +85,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }, 0, false);
 
     this.addEventListener('state', (state) => {
-      if(state === GROUP_CALL_STATE.CLOSED) {
+      if (state === GROUP_CALL_STATE.CLOSED) {
         this.cleanup();
       }
     });
@@ -96,16 +96,16 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   get state() {
-    const {connectionState} = this;
-    if(connectionState === 'closed') {
+    const { connectionState } = this;
+    if (connectionState === 'closed') {
       return GROUP_CALL_STATE.CLOSED;
-    } else if(connectionState !== 'connected' && (!IS_SAFARI || connectionState !== 'completed')) {
+    } else if (connectionState !== 'connected' && (!IS_SAFARI || connectionState !== 'completed')) {
       return GROUP_CALL_STATE.CONNECTING;
     } else {
-      const {participant} = this;
-      if(!participant.pFlags.can_self_unmute) {
+      const { participant } = this;
+      if (!participant.pFlags.can_self_unmute) {
         return GROUP_CALL_STATE.MUTED_BY_ADMIN;
-      } else if(participant.pFlags.muted) {
+      } else if (participant.pFlags.muted) {
         return GROUP_CALL_STATE.MUTED;
       } else {
         return GROUP_CALL_STATE.UNMUTED;
@@ -130,7 +130,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public get isClosing() {
-    const {state} = this;
+    const { state } = this;
     return state === GROUP_CALL_STATE.CLOSED;
   }
 
@@ -169,11 +169,11 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
   public async changeUserMuted(peerId: PeerId, muted?: boolean) {
     const participant = await this.getParticipantByPeerId(peerId);
-    if(NULL_PEER_ID === peerId && participant.pFlags.can_self_unmute) {
+    if (NULL_PEER_ID === peerId && participant.pFlags.can_self_unmute) {
       muted = muted === undefined ? !participant.pFlags.muted : muted;
     }
 
-    return this.editParticipant(participant, {muted});
+    return this.editParticipant(participant, { muted });
   }
 
   public getElement(endpoint: GroupCallOutputSource) {
@@ -182,7 +182,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
   public getVideoElementFromParticipantByType(participant: GroupCallParticipant, type: 'video' | 'presentation') {
     let source: GroupCallOutputSource;
-    if(participant.pFlags.self) {
+    if (participant.pFlags.self) {
       const connectionType: GroupCallConnectionType = type === 'video' ? 'main' : 'presentation';
       source = connectionType;
     } else {
@@ -191,11 +191,11 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
 
     const element = this.getElement(source) as HTMLVideoElement;
-    if(!element) return;
+    if (!element) return;
 
     const clone = element.cloneNode() as typeof element;
     clone.srcObject = element.srcObject;
-    return {video: clone, source};
+    return { video: clone, source };
   }
 
   public createConnectionInstance(options: {
@@ -212,7 +212,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public changeRaiseHand(raise: boolean) {
-    return this.editParticipant(this.participant, {raiseHand: raise});
+    return this.editParticipant(this.participant, { raiseHand: raise });
   }
 
   public async startScreenSharingInternal() {
@@ -236,14 +236,14 @@ export default class GroupCallInstance extends CallInstanceBase<{
       });
 
       stream.getVideoTracks()[0].addEventListener('ended', () => {
-        if(this.connections.presentation) { // maybe user has stopped screensharing through browser's ui
+        if (this.connections.presentation) { // maybe user has stopped screensharing through browser's ui
           this.stopScreenSharing();
         }
-      }, {once: true});
+      }, { once: true });
 
       connectionInstance.createDescription();
       connectionInstance.addInputVideoStream(stream);
-    } catch(err) {
+    } catch (err) {
       this.log.error('start screen sharing error', err);
     }
   }
@@ -256,7 +256,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
   public stopScreenSharing() {
     const connectionInstance = this.connections.presentation;
-    if(!connectionInstance) {
+    if (!connectionInstance) {
       return Promise.resolve();
     }
 
@@ -271,7 +271,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public toggleScreenSharing() {
-    if(this.isSharingScreen) {
+    if (this.isSharingScreen) {
       return this.stopScreenSharing();
     } else {
       return this.startScreenSharing();
@@ -292,7 +292,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
         videoPaused: false,
         videoStopped: false
       });
-    } catch(err) {
+    } catch (err) {
       this.log.error('startVideoSharing error', err, constraints);
     }
   }
@@ -306,7 +306,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public async stopVideoSharing() {
     const connectionInstance = this.connections.main;
     const track = connectionInstance.streamManager.inputStream.getVideoTracks()[0];
-    if(!track) {
+    if (!track) {
       return;
     }
 
@@ -319,7 +319,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public toggleVideoSharing() {
-    if(this.isSharingVideo) {
+    if (this.isSharingVideo) {
       return this.stopVideoSharing();
     } else {
       return this.startVideoSharing();
@@ -327,32 +327,32 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public async hangUp(discard = false, rejoin = false, isDiscarded = false) {
-    for(const type in this.connections) {
+    for (const type in this.connections) {
       const connection = this.connections[type as GroupCallConnectionType];
       connection.closeConnectionAndStream(!rejoin);
     }
 
     this.dispatchEvent('state', this.state);
 
-    if(isDiscarded) {
+    if (isDiscarded) {
       return;
     }
 
-    if(!rejoin) {
+    if (!rejoin) {
       const d = discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
       this.managers.appGroupCallsManager.hangUp(this.id, d);
     }
   }
 
   public tryAddTrack(options: Omit<TryAddTrackOptions, 'streamManager'>) {
-    const {description} = this;
+    const { description } = this;
     const source = super.tryAddTrack(options);
 
-    if(options.type === 'output') {
+    if (options.type === 'output') {
       const entry = description.getEntryBySource(+source);
       this.getParticipantByPeerId(entry.peerId).then((participant) => {
-        if(participant) {
-          rootScope.dispatchEvent('group_call_participant', {groupCallId: this.id, participant});
+        if (participant) {
+          rootScope.dispatchEvent('group_call_participant', { groupCallId: this.id, participant });
         }
       });
     }
@@ -368,22 +368,22 @@ export default class GroupCallInstance extends CallInstanceBase<{
     videoPaused: boolean,
     presentationPaused: boolean
   }>) {
-    if(!Object.keys(options).length) {
+    if (!Object.keys(options).length) {
       return;
     }
 
     // let processUpdate = true;
-    if(participant) {
+    if (participant) {
       // const {currentGroupCall} = this;
       // const isCurrentCall = currentGroupCall?.id === groupCallId;
       const isCurrentCall = true;
       const isUpdatingMeInCurrentCall = isCurrentCall && participant.pFlags.self;
 
-      if(isUpdatingMeInCurrentCall) {
-        if(options.muted !== undefined && !this.isSharingAudio) {
+      if (isUpdatingMeInCurrentCall) {
+        if (options.muted !== undefined && !this.isSharingAudio) {
           delete options.muted;
 
-          if(!Object.keys(options).length) {
+          if (!Object.keys(options).length) {
             return;
           }
         }
@@ -391,7 +391,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
       // if(isCurrentCall) {
       const muted = options.muted;
-      if(muted !== undefined) {
+      if (muted !== undefined) {
         /* const isAdmin = appChatsManager.hasRights(currentGroupCall.chatId, 'manage_call');
           if(isAdmin) {
             if(muted) {
@@ -400,10 +400,10 @@ export default class GroupCallInstance extends CallInstanceBase<{
             } else {
               participant.pFlags.can_self_unmute = true;
             }
-          } else  */if(participant.pFlags.self) {
-          if(muted) {
+          } else  */if (participant.pFlags.self) {
+          if (muted) {
             participant.pFlags.muted = true;
-          } else if(participant.pFlags.can_self_unmute) {
+          } else if (participant.pFlags.can_self_unmute) {
             delete participant.pFlags.muted;
           }
         }/*  else {
@@ -433,18 +433,18 @@ export default class GroupCallInstance extends CallInstanceBase<{
         }
       }); */
 
-      if(options.raiseHand !== undefined) {
-        if(options.raiseHand) participant.raise_hand_rating = '1';
+      if (options.raiseHand !== undefined) {
+        if (options.raiseHand) participant.raise_hand_rating = '1';
         else delete participant.raise_hand_rating;
       }
 
-      if(isUpdatingMeInCurrentCall) {
-        if(options.videoStopped !== undefined) {
-          if(options.videoStopped) delete participant.video;
+      if (isUpdatingMeInCurrentCall) {
+        if (options.videoStopped !== undefined) {
+          if (options.videoStopped) delete participant.video;
           else participant.video = generateSelfVideo(this.connections.main.sources.video);
         }
 
-        if(!participant.pFlags.muted && participant.pFlags.can_self_unmute) {
+        if (!participant.pFlags.muted && participant.pFlags.can_self_unmute) {
           this.setMuted(false);
         }
 
@@ -461,43 +461,57 @@ export default class GroupCallInstance extends CallInstanceBase<{
     return this.managers.appGroupCallsManager.editParticipant(this.id, participant, options);
   }
 
+  public setIsSpeaking(source: number, isSpeaking: boolean) {
+    this.participantsSsrcs.forEach((key, value) => {
+      key.forEach(async x => {
+        if (x.source == source) {
+          const participant = await this.getParticipantByPeerId(value);
+          participant.isSpeaking = isSpeaking;
+          console.log("setisspeaking:" + JSON.stringify(participant))
+          this.managers.appGroupCallsManager.saveApiParticipant(this.id, participant);
+          rootScope.dispatchEvent('group_call_participant', { groupCallId: this.id, participant });
+        }
+      })
+    })
+  }
+
   public onParticipantUpdate(participant: GroupCallParticipant, doNotDispatchParticipantUpdate?: PeerId) {
     const connectionInstance = this.connections.main;
-    const {connection, description} = connectionInstance;
+    const { connection, description } = connectionInstance;
 
     const peerId = getPeerId(participant.peer);
     const hasLeft = !!participant.pFlags.left;
     const oldSsrcs = this.participantsSsrcs.get(peerId) || [];
 
-    if(participant.presentation && !hasLeft) {
-      const {source} = makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
-      if(!this.hadAutoPinnedSources.has(source)) {
+    if (participant.presentation && !hasLeft) {
+      const { source } = makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
+      if (!this.hadAutoPinnedSources.has(source)) {
         this.hadAutoPinnedSources.add(source);
         this.pinSource(participant.pFlags.self ? 'presentation' : source);
       }
     }
 
-    if(participant.pFlags.self) {
+    if (participant.pFlags.self) {
       this.participant = participant;
 
-      if(connectionInstance.sources.audio.source !== participant.source) {
+      if (connectionInstance.sources.audio.source !== participant.source) {
         this.hangUp();
       }
 
       let mute = false;
-      if(!participant.pFlags.can_self_unmute) {
+      if (!participant.pFlags.can_self_unmute) {
         this.stopScreenSharing();
         this.stopVideoSharing();
         mute = true;
-      } else if(participant.pFlags.muted) {
+      } else if (participant.pFlags.muted) {
         mute = true;
       }
 
-      if(mute) {
+      if (mute) {
         this.setMuted(true);
       }
 
-      if(doNotDispatchParticipantUpdate !== peerId) {
+      if (doNotDispatchParticipantUpdate !== peerId) {
         this.dispatchEvent('state', this.state);
       }
 
@@ -506,7 +520,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     const ssrcs = hasLeft ? [] : makeSsrcsFromParticipant(participant);
 
-    if(!hasLeft) {
+    if (!hasLeft) {
       this.participantsSsrcs.set(peerId, ssrcs);
     } else {
       this.participantsSsrcs.delete(peerId);
@@ -518,11 +532,11 @@ export default class GroupCallInstance extends CallInstanceBase<{
     oldSsrcs.forEach((oldSsrc) => {
       const oldSource = oldSsrc.source;
       const newSsrc = ssrcs.find((ssrc) => ssrc.source === oldSource);
-      if(!newSsrc) {
+      if (!newSsrc) {
         this.unpinSource(oldSource);
 
         const oldEntry = description.getEntryBySource(oldSource);
-        if(oldEntry && oldEntry.direction !== 'inactive') {
+        if (oldEntry && oldEntry.direction !== 'inactive') {
           oldEntry.setDirection('inactive');
           modifiedTypes.add(oldEntry.type);
         }
@@ -531,8 +545,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     ssrcs.forEach((ssrc) => {
       let entry = description.getEntryBySource(ssrc.source);
-      if(entry) {
-        if(entry.direction === 'inactive') {
+      if (entry) {
+        if (entry.direction === 'inactive') {
           entry.setDirection(entry.originalDirection);
           modifiedTypes.add(entry.type);
         }
@@ -549,7 +563,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       //   entry.setDirection('recvonly');
       // } else {
       ssrc.type === 'video' && entry.setEndpoint(ssrc.endpoint);
-      entry.createTransceiver(connection, {direction: 'recvonly'});
+      entry.createTransceiver(connection, { direction: 'recvonly' });
       // }
 
       modifiedTypes.add(entry.type);
@@ -561,8 +575,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
         description,
         ssrcs
       });
-    } else  */if(modifiedTypes.size) {
-      if(modifiedTypes.has('video')) {
+    } else  */if (modifiedTypes.size) {
+      if (modifiedTypes.has('video')) {
         connectionInstance.updateConstraints = true;
       }
 

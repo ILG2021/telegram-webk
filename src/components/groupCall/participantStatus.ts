@@ -6,10 +6,10 @@
 
 import replaceContent from '../../helpers/dom/replaceContent';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {GroupCallParticipant} from '../../layer';
-import {i18n} from '../../lib/langPack';
-import {GROUP_CALL_PARTICIPANT_MUTED_STATE} from '.';
-import {GroupCallParticipantVideoType} from './participantVideo';
+import { GroupCallParticipant } from '../../layer';
+import { i18n } from '../../lib/langPack';
+import { GROUP_CALL_PARTICIPANT_MUTED_STATE } from '.';
+import { GroupCallParticipantVideoType } from './participantVideo';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 const className = 'group-call-participant-status';
@@ -30,17 +30,18 @@ export default class GroupCallParticipantStatusElement {
       return i;
     });
 
+    console.log("更新了：" + JSON.stringify(participant));
     let element2: HTMLElement, actionClassName: string;
-    if(state === states.MUTED_FOR_ME) {
+    if (state === states.MUTED_FOR_ME) {
       element2 = i18n('VoiceChat.Status.MutedForYou');
       actionClassName = 'is-muted';
-    } else if(state === states.UNMUTED) {
+    } else if (participant.isSpeaking) {
       element2 = i18n('VoiceChat.Status.Speaking');
       actionClassName = 'is-speaking';
-    } else if(state === states.HAND) {
+    } else if (state === states.HAND) {
       element2 = i18n('VoiceChat.Status.WantsSpeak');
       actionClassName = 'is-waiting';
-    } else if(participant.about && !icons.length) {
+    } else if (participant.about && !icons.length) {
       setInnerHTML(this.container, wrapEmojiText(participant.about));
       return;
     } else {
