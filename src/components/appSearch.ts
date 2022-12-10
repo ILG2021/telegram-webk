@@ -173,7 +173,6 @@ export default class AppSearch {
     }
 
     const maxId = this.minMsgId || 0;
-
     return this.searchPromise = rootScope.managers.appMessagesManager.getSearch({
       peerId: this.peerId,
       query,

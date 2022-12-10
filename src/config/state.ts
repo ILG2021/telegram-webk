@@ -221,7 +221,7 @@ export const STATE_INIT: State = {
       name: 'night',
       background: IS_MOBILE ? BACKGROUND_NIGHT_MOBILE : BACKGROUND_NIGHT_DESKTOP
     }],
-    theme: 'system',
+    theme: 'day',
     notifications: {
       sound: false
     },

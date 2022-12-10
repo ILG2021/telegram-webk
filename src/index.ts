@@ -4,50 +4,55 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import * as ReactDOM from "react-dom/client";
 import App from './config/app';
+import Modes from './config/modes';
+import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
+import IS_TOUCH_SUPPORTED from './environment/touchSupport';
+import { IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_FIREFOX, IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI } from './environment/userAgent';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import cancelEvent from './helpers/dom/cancelEvent';
-import {IS_STICKY_INPUT_BUGGED} from './helpers/dom/fixSafariStickyInputFocusing';
+import { IS_STICKY_INPUT_BUGGED } from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
-import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
-import {IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_FIREFOX, IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from './environment/userAgent';
-import './materialize.scss';
-import './scss/style.scss';
+import toggleAttributePolyfill from './helpers/dom/toggleAttributePolyfill';
+import overlayCounter from './helpers/overlayCounter';
+import './helpers/peerIdPolyfill';
 import pause from './helpers/schedulers/pause';
 import setWorkerProxy from './helpers/setWorkerProxy';
-import toggleAttributePolyfill from './helpers/dom/toggleAttributePolyfill';
-import rootScope from './lib/rootScope';
-import IS_TOUCH_SUPPORTED from './environment/touchSupport';
-import I18n from './lib/langPack';
-import './helpers/peerIdPolyfill';
-import './lib/polyfill';
-import apiManagerProxy from './lib/mtproto/mtprotoworker';
-import getProxiedManagers from './lib/appManagers/getProxiedManagers';
-import themeController from './helpers/themeController';
-import overlayCounter from './helpers/overlayCounter';
-import singleInstance from './lib/mtproto/singleInstance';
 import parseUriParams from './helpers/string/parseUriParams';
-import Modes from './config/modes';
-import {AuthState} from './types';
+import themeController from './helpers/themeController';
+import getProxiedManagers from './lib/appManagers/getProxiedManagers';
+import I18n from './lib/langPack';
+import apiManagerProxy from './lib/mtproto/mtprotoworker';
+import singleInstance from './lib/mtproto/singleInstance';
+import './lib/polyfill';
+import rootScope from './lib/rootScope';
+import './materialize.scss';
+import './scss/style.scss';
+import { AuthState } from './types';
 // import appNavigationController from './components/appNavigationController';
 
-document.addEventListener('DOMContentLoaded', async() => {
+document.addEventListener('DOMContentLoaded', async () => {
   toggleAttributePolyfill();
 
   // polyfill for replaceChildren
-  if((Node as any).prototype.replaceChildren === undefined) {
-    (Node as any).prototype.replaceChildren = function(...nodes: any[]) {
+  if ((Node as any).prototype.replaceChildren === undefined) {
+    (Node as any).prototype.replaceChildren = function (...nodes: any[]) {
       this.textContent = '';
       // while(this.lastChild) {
       //   this.removeChild(this.lastChild);
       // }
-      if(nodes) {
+      if (nodes) {
         this.append(...nodes);
       }
     }
   }
 
   rootScope.managers = getProxiedManagers();
+  var div = document.createElement("div")
+  div.id = 'dialog'
+  document.body.append(div)
+  rootScope.dialogRoot = ReactDOM.createRoot(div);
 
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
   manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
@@ -60,9 +65,9 @@ document.addEventListener('DOMContentLoaded', async() => {
   let lastVH: number;
   const setVH = () => {
     const vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : window.innerHeight) * 0.01;
-    if(lastVH === vh) {
+    if (lastVH === vh) {
       return;
-    } else if(IS_TOUCH_SUPPORTED && lastVH < vh && (vh - lastVH) > 1) {
+    } else if (IS_TOUCH_SUPPORTED && lastVH < vh && (vh - lastVH) > 1) {
       blurActiveElement(); // (Android) fix blurring inputs when keyboard is being closed (e.g. closing keyboard by back arrow and touching a bubble)
     }
 
@@ -103,13 +108,13 @@ document.addEventListener('DOMContentLoaded', async() => {
   window.addEventListener('resize', setVH);
   setVH();
 
-  if(IS_STICKY_INPUT_BUGGED) {
+  if (IS_STICKY_INPUT_BUGGED) {
     const toggleResizeMode = () => {
       setViewportVH = tabId === 1 && IS_STICKY_INPUT_BUGGED && !overlayCounter.isOverlayActive;
       setVH();
 
-      if(w !== window) {
-        if(setViewportVH) {
+      if (w !== window) {
+        if (setViewportVH) {
           window.removeEventListener('resize', setVH);
           w.addEventListener('resize', setVH);
         } else {
@@ -124,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async() => {
       const wasTabId = tabId !== undefined;
       tabId = id;
 
-      if(wasTabId || tabId === 1) {
+      if (wasTabId || tabId === 1) {
         toggleResizeMode();
       }
     };
@@ -134,23 +139,23 @@ document.addEventListener('DOMContentLoaded', async() => {
     });
   }
 
-  if(IS_FIREFOX && !IS_EMOJI_SUPPORTED) {
+  if (IS_FIREFOX && !IS_EMOJI_SUPPORTED) {
     document.addEventListener('dragstart', (e) => {
       const target = e.target as HTMLElement;
-      if(target.tagName === 'IMG' && target.classList.contains('emoji')) {
+      if (target.tagName === 'IMG' && target.classList.contains('emoji')) {
         cancelEvent(e);
         return false;
       }
     });
   }
 
-  if(IS_EMOJI_SUPPORTED) {
+  if (IS_EMOJI_SUPPORTED) {
     document.documentElement.classList.add('native-emoji');
   }
 
   // prevent firefox image dragging
   document.addEventListener('dragstart', (e) => {
-    if((e.target as HTMLElement)?.tagName === 'IMG') {
+    if ((e.target as HTMLElement)?.tagName === 'IMG') {
       e.preventDefault();
       return false;
     }
@@ -158,32 +163,32 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   // restrict contextmenu on images (e.g. webp stickers)
   document.addEventListener('contextmenu', (e) => {
-    if((e.target as HTMLElement).tagName === 'IMG' && !(window as any).appMediaViewer) {
+    if ((e.target as HTMLElement).tagName === 'IMG' && !(window as any).appMediaViewer) {
       cancelEvent(e);
     }
   });
 
-  if(IS_FIREFOX) {
+  if (IS_FIREFOX) {
     document.documentElement.classList.add('is-firefox', 'no-backdrop');
   }
 
-  if(IS_MOBILE) {
+  if (IS_MOBILE) {
     document.documentElement.classList.add('is-mobile');
   }
 
-  if(IS_APPLE) {
-    if(IS_SAFARI) {
+  if (IS_APPLE) {
+    if (IS_SAFARI) {
       document.documentElement.classList.add('is-safari');
     }
 
     // document.documentElement.classList.add('emoji-supported');
 
-    if(IS_APPLE_MOBILE) {
+    if (IS_APPLE_MOBILE) {
       document.documentElement.classList.add('is-ios');
     } else {
       document.documentElement.classList.add('is-mac');
     }
-  } else if(IS_ANDROID) {
+  } else if (IS_ANDROID) {
     document.documentElement.classList.add('is-android');
 
     /* document.addEventListener('focusin', (e) => {
@@ -196,7 +201,7 @@ document.addEventListener('DOMContentLoaded', async() => {
     }, {passive: true}); */
   }
 
-  if(!IS_TOUCH_SUPPORTED) {
+  if (!IS_TOUCH_SUPPORTED) {
     document.documentElement.classList.add('no-touch');
   } else {
     document.documentElement.classList.add('is-touch');
@@ -227,7 +232,7 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   themeController.setThemeListener();
 
-  if(langPack.appVersion !== App.langPackVersion) {
+  if (langPack.appVersion !== App.langPackVersion) {
     I18n.getLangPack(langPack.lang_code);
   }
 
@@ -251,7 +256,7 @@ document.addEventListener('DOMContentLoaded', async() => {
   const hash = location.hash;
   const splitted = hash.split('?');
   const params = parseUriParams(hash, splitted);
-  if(params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
+  if (params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
     const data: AuthState.signImport['data'] = {
       token: params.tgWebAuthToken,
       dcId: +params.tgWebAuthDcId,
@@ -260,9 +265,9 @@ document.addEventListener('DOMContentLoaded', async() => {
       tgAddr: params.tgaddr
     };
 
-    if(data.isTest !== Modes.test) {
+    if (data.isTest !== Modes.test) {
       const urlSearchParams = new URLSearchParams(location.search);
-      if(+params.tgWebAuthTest) {
+      if (+params.tgWebAuthTest) {
         urlSearchParams.set('test', '1');
       } else {
         urlSearchParams.delete('test');
@@ -272,19 +277,19 @@ document.addEventListener('DOMContentLoaded', async() => {
       return;
     }
 
-    rootScope.managers.appStateManager.pushToState('authState', authState = {_: 'authStateSignImport', data});
+    rootScope.managers.appStateManager.pushToState('authState', authState = { _: 'authStateSignImport', data });
 
     // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
   }
 
-  if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
+  if (authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
     const el = document.getElementById('auth-pages');
     let scrollable: HTMLElement;
-    if(el) {
+    if (el) {
       scrollable = el.querySelector('.scrollable') as HTMLElement;
-      if((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
+      if ((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
         scrollable.classList.add('no-scrollbar');
       }
 
@@ -306,13 +311,13 @@ document.addEventListener('DOMContentLoaded', async() => {
         meModule.default.setAuthorized(false);
         pushModule.default.forceUnsubscribe();
       });
-    } catch(err) {
+    } catch (err) {
 
     }
 
     let pagePromise: Promise<void>;
     // langPromise.then(async() => {
-    switch(authState._) {
+    switch (authState._) {
       case 'authStateSignIn':
         pagePromise = (await import('./pages/pageSignIn')).default.mount();
         break;
@@ -334,9 +339,9 @@ document.addEventListener('DOMContentLoaded', async() => {
     }
     // });
 
-    if(scrollable) {
+    if (scrollable) {
       // wait for text appear
-      if(pagePromise) {
+      if (pagePromise) {
         await pagePromise;
       }
 

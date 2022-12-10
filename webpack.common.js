@@ -139,12 +139,21 @@ module.exports = {
         // use: [
         //   'handlebars-loader'
         // ]
+      },
+      {
+        test: /\.(tsx)$/,
+        use: [
+          {
+            loader: 'babel-loader',
+          },
+        ],
+        exclude: /node_modules/,
       }
     ]
   },
 
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js', '.jsx', '.tsx']
   },
 
   entry: './src/index.ts',

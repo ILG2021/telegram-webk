@@ -28,6 +28,7 @@ import { Ssrc } from './types';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
 import { AppManagers } from '../appManagers/managers';
 import { generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant } from './groupCallsController';
+import getAudioConstraints from './helpers/getAudioConstraints';
 
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
@@ -41,7 +42,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public connections: { [k in GroupCallConnectionType]?: GroupCallConnectionInstance };
   public groupCall: GroupCall;
   public participant: GroupCallParticipant;
-
+  public devices: any;
   // will be set with negotiation
   public joined: boolean;
 
@@ -165,6 +166,22 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
   public toggleMuted() {
     return this.requestAudioSource(true).then(() => this.changeUserMuted(NULL_PEER_ID));
+  }
+
+  public switchAudioInput(deviceId: string) {
+    const constraint = getAudioConstraints()
+    constraint.deviceId = { exact: deviceId }
+
+    getStream({
+      audio: constraint,
+      video: false
+    }, this.isMuted).then((stream) => {
+      this.streamManager.inputStream.getAudioTracks().forEach(x=>{
+        this.streamManager.removeTrack(x)
+      })
+      
+      this.onInputStream(stream)
+    });
   }
 
   public async changeUserMuted(peerId: PeerId, muted?: boolean) {

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import EventListenerBase, {EventListenerListeners} from '../../helpers/eventListenerBase';
+import EventListenerBase, { EventListenerListeners } from '../../helpers/eventListenerBase';
 import noop from '../../helpers/noop';
-import {logger} from '../logger';
+import { logger } from '../logger';
 import getAudioConstraints from './helpers/getAudioConstraints';
 import getScreenConstraints from './helpers/getScreenConstraints';
 import getStreamCached from './helpers/getStreamCached';
 import getVideoConstraints from './helpers/getVideoConstraints';
 import stopTrack from './helpers/stopTrack';
 import LocalConferenceDescription from './localConferenceDescription';
-import StreamManager, {StreamItem} from './streamManager';
+import StreamManager, { StreamItem } from './streamManager';
 
 export type TryAddTrackOptions = {
   stream: MediaStream,
@@ -78,11 +78,11 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   }
 
   public requestInputSource(audio: boolean, video: boolean, muted: boolean) {
-    const {streamManager} = this;
-    if(streamManager) {
+    const { streamManager } = this;
+    if (streamManager) {
       const isAudioGood = !audio || this.isSharingAudio;
       const isVideoGood = !video || this.isSharingVideo;
-      if(isAudioGood && isVideoGood) {
+      if (isAudioGood && isVideoGood) {
         return Promise.resolve();
       }
     }
@@ -146,8 +146,8 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     });
   }
 
-  public tryAddTrack({stream, track, type, source}: TryAddTrackOptions) {
-    if(!source) {
+  public tryAddTrack({ stream, track, type, source }: TryAddTrackOptions) {
+    if (!source) {
       source = StreamManager.getSource(stream, type);
     }
 
@@ -155,7 +155,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
     const isOutput = type === 'output';
 
-    const {player, elements, streamManager} = this;
+    const { player, elements, streamManager } = this;
 
     const tagName = track.kind as StreamItem['kind'];
     const isVideo = tagName === 'video';
@@ -163,33 +163,34 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     const elementEndpoint = isVideo ? source : tagName;
     let element = elements.get(elementEndpoint);
 
-    if(isVideo) {
+    if (isVideo) {
       track.addEventListener('ended', () => {
         this.log('[track] onended');
         elements.delete(elementEndpoint);
         // element.remove();
-      }, {once: true});
+      }, { once: true });
     }
 
-    if(isOutput) {
+    if (isOutput) {
       streamManager.addTrack(stream, track, type);
     }
 
     const useStream = isVideo ? stream : streamManager.outputStream;
-    if(!element) {
+    if (!element) {
       element = document.createElement(tagName);
       element.autoplay = true;
       element.srcObject = useStream;
       element.volume = 1.0;
 
-      if((element as any).sinkId !== 'undefined') {
-        const {outputDeviceId} = this;
-        if(outputDeviceId) {
-          (element as any).setSinkId(outputDeviceId);
+      if ((element as any).sinkId !== 'undefined') {
+        if (element instanceof Audio) {
+          const deviceId = localStorage.getItem('audiooutput');
+          if (deviceId)
+            (element as any).setSinkId(deviceId);
         }
       }
 
-      if(!isVideo) {
+      if (!isVideo) {
         player.appendChild(element);
       } else {
         element.setAttribute('playsinline', 'true');
@@ -199,7 +200,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
       elements.set(elementEndpoint, element);
     } else {
-      if(element.paused) {
+      if (element.paused) {
         element.play().catch(noop);
       }
 
@@ -214,23 +215,23 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
   public setMuted(muted?: boolean) {
     this.streamManager.inputStream.getAudioTracks().forEach((track) => {
-      if(track?.kind === 'audio') {
+      if (track?.kind === 'audio') {
         track.enabled = muted === undefined ? !track.enabled : !muted;
       }
     });
   }
 
   protected onInputStream(stream: MediaStream): void {
-    if(!this.isClosing) {
+    if (!this.isClosing) {
       const videoTracks = stream.getVideoTracks();
-      if(videoTracks.length) {
+      if (videoTracks.length) {
         this.saveInputVideoStream(stream, 'main');
       }
 
-      const {streamManager, description} = this;
+      const { streamManager, description } = this;
       streamManager.addStream(stream, 'input');
 
-      if(description) {
+      if (description) {
         streamManager.appendToConference(description);
       }
     } else { // if call is declined earlier than stream appears
