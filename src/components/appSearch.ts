@@ -10,6 +10,7 @@ import InputSearch from './inputSearch';
 import replaceContent from '../helpers/dom/replaceContent';
 import {i18n, LangPackKey} from '../lib/langPack';
 import rootScope from '../lib/rootScope';
+import wrapMessageActionTextNew from './wrappers/messageActionTextNew';
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -179,7 +180,8 @@ export default class AppSearch {
       inputFilter: {_: 'inputMessagesFilterEmpty'},
       maxId,
       limit: 20,
-      threadId: this.threadId
+      threadId: this.threadId,
+      wrapFunc: wrapMessageActionTextNew
     }).then((res) => {
       this.searchPromise = null;
 
