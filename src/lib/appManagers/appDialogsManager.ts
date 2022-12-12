@@ -4,89 +4,87 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDialogFilter as DialogFilter, MyDialogFilter} from '../storages/filters';
-import type LazyLoadQueue from '../../components/lazyLoadQueue';
-import type {Dialog, MyMessage} from './appMessagesManager';
-import type {MyPhoto} from './appPhotosManager';
-import type {MyDocument} from './appDocsManager';
-import type {State} from '../../config/state';
-import AvatarElement from '../../components/avatar';
-import DialogsContextMenu from '../../components/dialogsContextMenu';
-import {horizontalMenu} from '../../components/horizontalMenu';
-import ripple from '../../components/ripple';
-import Scrollable, {ScrollableX, SliceSides} from '../../components/scrollable';
-import {formatDateAccordingToTodayNew} from '../../helpers/date';
-import {IS_MOBILE_SAFARI, IS_SAFARI} from '../../environment/userAgent';
-import {logger, LogTypes} from '../logger';
-import rootScope from '../rootScope';
-import appImManager from './appImManager';
-import Button from '../../components/button';
-import SetTransition from '../../components/singleTransition';
-import {MyDraftMessage} from './appDraftsManager';
-import DEBUG, {MOUNT_CLASS_TO} from '../../config/debug';
-import PeerTitle from '../../components/peerTitle';
-import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '../langPack';
-import findUpTag from '../../helpers/dom/findUpTag';
-import lottieLoader from '../rlottie/lottieLoader';
-import wrapPhoto from '../../components/wrappers/photo';
-import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
-import appSidebarLeft, {SettingSection} from '../../components/sidebarLeft';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
-import replaceContent from '../../helpers/dom/replaceContent';
-import ConnectionStatusComponent from '../../components/connectionStatus';
-import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
-import {fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
-import SortedUserList from '../../components/sortedUserList';
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import handleTabSwipe from '../../helpers/dom/handleTabSwipe';
-import windowSize from '../../helpers/windowSize';
-import isInDOM from '../../helpers/dom/isInDOM';
-import {setSendingStatus} from '../../components/sendingStatus';
-import SortedList, {SortedElementBase} from '../../helpers/sortedList';
-import debounce from '../../helpers/schedulers/debounce';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID} from '../mtproto/mtproto_config';
-import groupCallActiveIcon from '../../components/groupCallActiveIcon';
-import {Chat, Message, NotifyPeer} from '../../layer';
-import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
-import mediaSizes from '../../helpers/mediaSizes';
-import appNavigationController, {NavigationItem} from '../../components/appNavigationController';
-import assumeType from '../../helpers/assumeType';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {AppManagers} from './managers';
-import appSidebarRight from '../../components/sidebarRight';
+import appNavigationController, { NavigationItem } from '../../components/appNavigationController';
+import AvatarElement from '../../components/avatar';
+import Button from '../../components/button';
+import ConnectionStatusComponent from '../../components/connectionStatus';
+import DialogsContextMenu from '../../components/dialogsContextMenu';
+import groupCallActiveIcon from '../../components/groupCallActiveIcon';
+import { horizontalMenu } from '../../components/horizontalMenu';
+import type LazyLoadQueue from '../../components/lazyLoadQueue';
+import PeerTitle from '../../components/peerTitle';
 import PopupElement from '../../components/popups';
-import choosePhotoSize from './utils/photos/choosePhotoSize';
-import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
+import ripple from '../../components/ripple';
+import Row, { RowMediaSizeType } from '../../components/row';
+import Scrollable, { ScrollableX, SliceSides } from '../../components/scrollable';
+import { setSendingStatus } from '../../components/sendingStatus';
+import appSidebarLeft, { SettingSection } from '../../components/sidebarLeft';
+import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import appSidebarRight from '../../components/sidebarRight';
+import SetTransition from '../../components/singleTransition';
+import SortedUserList from '../../components/sortedUserList';
 import wrapMessageForReply from '../../components/wrappers/messageForReply';
-import isMessageRestricted from './utils/messages/isMessageRestricted';
+import wrapPeerTitle from '../../components/wrappers/peerTitle';
+import wrapPhoto from '../../components/wrappers/photo';
+import wrapStickerEmoji from '../../components/wrappers/stickerEmoji';
+import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
+import type { State } from '../../config/state';
+import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import { IS_MOBILE_SAFARI, IS_SAFARI } from '../../environment/userAgent';
+import filterAsync from '../../helpers/array/filterAsync';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
+import { formatDateAccordingToTodayNew } from '../../helpers/date';
+import DialogsPlaceholder from '../../helpers/dialogsPlaceholder';
+import { attachContextMenuListener } from '../../helpers/dom/attachContextMenuListener';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import { attachClickEvent } from '../../helpers/dom/clickEvent';
+import findUpTag from '../../helpers/dom/findUpTag';
+import handleTabSwipe from '../../helpers/dom/handleTabSwipe';
+import isInDOM from '../../helpers/dom/isInDOM';
+import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
+import { renderImageFromUrlPromise } from '../../helpers/dom/renderImageFromUrl';
+import replaceContent from '../../helpers/dom/replaceContent';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import whichChild from '../../helpers/dom/whichChild';
+import makeError from '../../helpers/makeError';
+import mediaSizes from '../../helpers/mediaSizes';
+import { MiddlewareHelper } from '../../helpers/middleware';
+import middlewarePromise from '../../helpers/middlewarePromise';
+import noop from '../../helpers/noop';
+import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
+import { fastRafConventional, fastRafPromise } from '../../helpers/schedulers';
+import debounce from '../../helpers/schedulers/debounce';
+import pause from '../../helpers/schedulers/pause';
+import SortedList, { SortedElementBase } from '../../helpers/sortedList';
+import windowSize from '../../helpers/windowSize';
+import { Chat, Message } from '../../layer';
+import callsController from '../calls/callsController';
+import groupCallsController from '../calls/groupCallsController';
+import I18n, { FormatterArguments, i18n, LangPackKey, _i18n } from '../langPack';
+import { logger, LogTypes } from '../logger';
+import apiManagerProxy from '../mtproto/mtprotoworker';
+import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID } from '../mtproto/mtproto_config';
+import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
+import lottieLoader from '../rlottie/lottieLoader';
+import rootScope from '../rootScope';
+import type { MyDialogFilter as DialogFilter, MyDialogFilter } from '../storages/filters';
+import type { MyDocument } from './appDocsManager';
+import appDownloadManager from './appDownloadManager';
+import { MyDraftMessage } from './appDraftsManager';
+import appImManager from './appImManager';
+import type { Dialog, MyMessage } from './appMessagesManager';
+import type { MyPhoto } from './appPhotosManager';
+import getProxiedManagers from './getProxiedManagers';
+import { AppManagers } from './managers';
+import getDialogIndex from './utils/dialogs/getDialogIndex';
+import getDialogIndexKey from './utils/dialogs/getDialogIndexKey';
 import getMediaFromMessage from './utils/messages/getMediaFromMessage';
 import getMessageSenderPeerIdOrName from './utils/messages/getMessageSenderPeerIdOrName';
-import wrapStickerEmoji from '../../components/wrappers/stickerEmoji';
-import getDialogIndexKey from './utils/dialogs/getDialogIndexKey';
-import getProxiedManagers from './getProxiedManagers';
-import getDialogIndex from './utils/dialogs/getDialogIndex';
-import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import wrapPeerTitle from '../../components/wrappers/peerTitle';
-import middlewarePromise from '../../helpers/middlewarePromise';
-import appDownloadManager from './appDownloadManager';
-import groupCallsController from '../calls/groupCallsController';
-import callsController from '../calls/callsController';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import noop from '../../helpers/noop';
-import DialogsPlaceholder from '../../helpers/dialogsPlaceholder';
-import pause from '../../helpers/schedulers/pause';
-import apiManagerProxy from '../mtproto/mtprotoworker';
-import filterAsync from '../../helpers/array/filterAsync';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import whichChild from '../../helpers/dom/whichChild';
-import {MiddlewareHelper} from '../../helpers/middleware';
-import makeError from '../../helpers/makeError';
-import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
-import Row, {RowMediaSizeType} from '../../components/row'
+import isMessageRestricted from './utils/messages/isMessageRestricted';
+import choosePhotoSize from './utils/photos/choosePhotoSize';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -131,6 +129,7 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
 
 const BADGE_SIZE = 22;
 
+
 class SortedDialogList extends SortedList<SortedDialog> {
   constructor(
     public managers: AppManagers,
@@ -160,6 +159,7 @@ class SortedDialogList extends SortedList<SortedDialog> {
         (base as SortedDialog).dom = dom;
 
         await Promise.all(loadPromises);
+        rootScope.dispatchEvent("dialog_element_create", base)
         return base as SortedDialog;
       },
       updateElementWith: fastRafConventional,

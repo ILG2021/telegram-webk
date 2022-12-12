@@ -3343,7 +3343,7 @@ export class AppMessagesManager extends AppManager {
     return filterMessagesByInputFilter(inputFilter, history.map((mid) => _storage.get(mid)), limit);
   }
 
-  public getSearch({ peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId, minDate, maxDate, wrapFunc }: {
+  public getSearch({ peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId, minDate, maxDate }: {
     peerId?: PeerId,
     maxId?: number,
     limit?: number,
@@ -3356,8 +3356,7 @@ export class AppMessagesManager extends AppManager {
       _: MyInputMessagesFilter
     },
     minDate?: number,
-    maxDate?: number,
-    wrapFunc?: any
+    maxDate?: number
   }): Promise<{
     count: number,
     next_rate: number,
@@ -3399,21 +3398,14 @@ export class AppMessagesManager extends AppManager {
     };
 
     // * костыль для limit 1, если нужно и получить сообщение, и узнать количество сообщений
-    if (peerId && !backLimit && !maxId && (!query || wrapFunc) && limit !== 1 && !threadId/*  && inputFilter._ !== 'inputMessagesFilterPinned' */) {
+    if (peerId && !backLimit && !maxId && limit !== 1 && !threadId/*  && inputFilter._ !== 'inputMessagesFilterPinned' */) {
       storage = beta ?
         this.getSearchStorage(peerId, inputFilter._) as any :
         this.getHistoryStorage(peerId);
       foundMsgs = this.filterMessagesByInputFilterFromStorage(inputFilter._, storage.history.slice, this.getHistoryMessagesStorage(peerId), limit);
-      if (query && wrapFunc)
-        foundMsgs = foundMsgs.filter(async x => {
-          const isMessage = x._ === 'message';
-          if (isMessage)
-            return x.message.toLowerCase().includes(query.toLowerCase())
-          else {
-            const wrapText = await wrapFunc(x, true)
-            return wrapText.toLowerCase().includes(query.toLowerCase()) || x.peerId + "" == query || x.fromId + "" == query
-          }
-        })
+      if (query) {  // api search not support messageservice type, support it here
+        foundMsgs = foundMsgs.filter(x => x.peerId + "" == query || x.fromId + "" == query)
+      }
     }
 
     if (foundMsgs.length) {

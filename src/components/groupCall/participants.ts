@@ -7,25 +7,23 @@
 import PopupGroupCall from '.';
 import filterAsync from '../../helpers/array/filterAsync';
 import contextMenuController from '../../helpers/contextMenuController';
-import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
+import { attachContextMenuListener } from '../../helpers/dom/attachContextMenuListener';
 import cancelEvent from '../../helpers/dom/cancelEvent';
+import { attachClickEvent } from '../../helpers/dom/clickEvent';
 import findUpClassName from '../../helpers/dom/findUpClassName';
-import {addFullScreenListener, isFullScreen} from '../../helpers/dom/fullScreen';
+import { addFullScreenListener, isFullScreen } from '../../helpers/dom/fullScreen';
 import ListenerSetter from '../../helpers/listenerSetter';
 import noop from '../../helpers/noop';
 import safeAssign from '../../helpers/object/safeAssign';
 import positionMenu from '../../helpers/positionMenu';
 import ScrollableLoader from '../../helpers/scrollableLoader';
-import {GroupCallParticipant} from '../../layer';
-import type {AppChatsManager} from '../../lib/appManagers/appChatsManager';
-import type {AppGroupCallsManager} from '../../lib/appManagers/appGroupCallsManager';
+import { GroupCallParticipant } from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
-import type {AppPeersManager} from '../../lib/appManagers/appPeersManager';
-import {AppManagers} from '../../lib/appManagers/managers';
+import { AppManagers } from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import GroupCallInstance from '../../lib/calls/groupCallInstance';
 import rootScope from '../../lib/rootScope';
-import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import confirmationPopup from '../confirmationPopup';
 import PeerTitle from '../peerTitle';
 import PopupElement from '../popups';
@@ -34,7 +32,7 @@ import GroupCallParticipantsList from './participantsList';
 import GroupCallParticipantsVideoElement from './participantVideos';
 
 export class GroupCallParticipantContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: (peerId: PeerId) => boolean | Promise<boolean>})[];
+  private buttons: (ButtonMenuItemOptions & { verify: (peerId: PeerId) => boolean | Promise<boolean> })[];
   private element: HTMLDivElement;
   private chatId: ChatId;
   private targetPeerId: PeerId;
@@ -78,12 +76,12 @@ export class GroupCallParticipantContextMenu {
       icon: 'deleteuser danger',
       text: 'VoiceChat.RemovePeer',
       verify: () => this.managers.appChatsManager.hasRights(this.chatId, 'ban_users'),
-      onClick: async() => {
+      onClick: async () => {
         confirmationPopup({
           peerId: this.targetPeerId,
-          title: new PeerTitle({peerId: this.targetPeerId}).element,
+          title: new PeerTitle({ peerId: this.targetPeerId }).element,
           descriptionLangKey: await this.managers.appChatsManager.isBroadcast(this.chatId) ? 'VoiceChat.RemovePeer.Confirm.Channel' : 'VoiceChat.RemovePeer.Confirm',
-          descriptionLangArgs: [new PeerTitle({peerId: this.targetPeerId}).element],
+          descriptionLangArgs: [new PeerTitle({ peerId: this.targetPeerId }).element],
           button: {
             langKey: 'VoiceChat.RemovePeer.Confirm.OK',
             isDanger: true
@@ -94,7 +92,7 @@ export class GroupCallParticipantContextMenu {
       }
     }];
 
-    const {listenerSetter} = options;
+    const { listenerSetter } = options;
     this.managers = options.managers;
     this.instance = options.instance;
     this.chatId = this.instance.chatId;
@@ -102,40 +100,13 @@ export class GroupCallParticipantContextMenu {
     this.element = ButtonMenu(this.buttons, listenerSetter);
     this.element.classList.add('group-call-participant-menu', 'night');
 
-    attachContextMenuListener(options.onContextElement, async(e: any) => {
-      const li = findUpClassName(e.target, 'group-call-participant');
-      if(!li) {
-        return;
-      }
+    attachContextMenuListener(options.onContextElement, this.contentMenuClick, listenerSetter);
+    attachClickEvent(options.onContextElement, this.contentMenuClick);
 
-      if(this.element.parentElement !== appendTo) {
-        appendTo.append(this.element);
-      }
-
-      cancelEvent(e);
-
-      const peerId = this.targetPeerId = li.dataset.peerId.toPeerId();
-      this.participant = await this.instance.getParticipantByPeerId(peerId);
-      if(this.participant.pFlags.self) {
-        return;
-      }
-
-      this.canManageCall = await this.managers.appChatsManager.hasRights(this.chatId, 'manage_call');
-
-      await filterAsync(this.buttons, async(button) => {
-        const good = await button.verify(peerId);
-        button.element.classList.toggle('hide', !good);
-        return good;
-      });
-
-      positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, 'right');
-      contextMenuController.openBtnMenu(this.element);
-    }, listenerSetter);
-
-    listenerSetter.add(rootScope)('group_call_participant', ({groupCallId, participant}) => {
-      if(this.instance.id === groupCallId) {
+    listenerSetter.add(rootScope)('group_call_participant', ({ groupCallId, participant }) => {
+      if (this.instance.id === groupCallId) {
         const peerId = getPeerId(participant.peer);
-        if(this.targetPeerId === peerId) {
+        if (this.targetPeerId === peerId) {
           contextMenuController.close();
         }
       }
@@ -144,21 +115,53 @@ export class GroupCallParticipantContextMenu {
     let appendTo: HTMLElement = document.body;
     addFullScreenListener(document.body, () => {
       const isFull = isFullScreen();
-      appendTo = isFull ? PopupElement.getPopups(PopupGroupCall)[0].getContainer(): document.body;
+      appendTo = isFull ? PopupElement.getPopups(PopupGroupCall)[0].getContainer() : document.body;
 
-      if(!isFull) {
+      if (!isFull) {
         contextMenuController.close();
       }
     }, listenerSetter);
   }
 
+  private contentMenuClick = async (e: any) => {
+    let appendTo: HTMLElement = document.body;
+
+    const li = findUpClassName(e.target, 'group-call-participant');
+    if (!li) {
+      return;
+    }
+
+    if (this.element.parentElement !== appendTo) {
+      appendTo.append(this.element);
+    }
+
+    cancelEvent(e);
+
+    const peerId = this.targetPeerId = li.dataset.peerId.toPeerId();
+    this.participant = await this.instance.getParticipantByPeerId(peerId);
+    if (this.participant.pFlags.self) {
+      return;
+    }
+
+    this.canManageCall = await this.managers.appChatsManager.hasRights(this.chatId, 'manage_call');
+
+    await filterAsync(this.buttons, async (button) => {
+      const good = await button.verify(peerId);
+      button.element.classList.toggle('hide', !good);
+      return good;
+    });
+
+    positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, 'right');
+    contextMenuController.openBtnMenu(this.element);
+  }
+
   private onOpenProfileClick = () => {
     const popup = PopupElement.getPopups(PopupGroupCall)[0];
-    if(popup) {
+    if (popup) {
       popup.hide();
     }
 
-    appImManager.setInnerPeer({peerId: this.targetPeerId});
+    appImManager.setInnerPeer({ peerId: this.targetPeerId });
   };
 
   private toggleParticipantMuted = (muted: boolean) => {
@@ -197,7 +200,7 @@ export default class GroupCallParticipantsElement {
 
     const sortedList = this.sortedList = new GroupCallParticipantsList(this.instance);
 
-    const {instance, listenerSetter} = this;
+    const { instance, listenerSetter } = this;
     this.contextMenu = new GroupCallParticipantContextMenu({
       ...options,
       onContextElement: sortedList.list,
@@ -216,8 +219,8 @@ export default class GroupCallParticipantsElement {
 
     options.appendTo.append(container);
 
-    listenerSetter.add(rootScope)('group_call_participant', ({groupCallId, participant}) => {
-      if(this.instance.id === groupCallId) {
+    listenerSetter.add(rootScope)('group_call_participant', ({ groupCallId, participant }) => {
+      if (this.instance.id === groupCallId) {
         this.updateParticipant(participant);
       }
     });
@@ -225,7 +228,7 @@ export default class GroupCallParticipantsElement {
     const scrollableLoader = new ScrollableLoader({
       scrollable,
       getPromise: () => {
-        return this.managers.appGroupCallsManager.getGroupCallParticipants(this.instance.id).then(({participants, isEnd}) => {
+        return this.managers.appGroupCallsManager.getGroupCallParticipants(this.instance.id).then(({ participants, isEnd }) => {
           participants.forEach((participant) => {
             this.updateParticipant(participant);
           });
@@ -241,15 +244,15 @@ export default class GroupCallParticipantsElement {
   private updateParticipant(participant: GroupCallParticipant) {
     const peerId = getPeerId(participant.peer);
     const has = this.sortedList.has(peerId);
-    if(participant.pFlags.left) {
-      if(has) {
+    if (participant.pFlags.left) {
+      if (has) {
         this.sortedList.delete(peerId);
       }
 
       return;
     }
 
-    if(!has) {
+    if (!has) {
       this.sortedList.add(peerId);
       return;
     }

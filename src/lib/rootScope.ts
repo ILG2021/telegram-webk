@@ -4,26 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction } from '../layer';
-import type { AppMessagesManager, Dialog, MessagesStorageKey, MyMessage } from './appManagers/appMessagesManager';
-import type { MyDialogFilter } from './storages/filters';
-import type { Folder } from './storages/dialogs';
-import type { UserTyping } from './appManagers/appProfileManager';
-import type { MyDraftMessage } from './appManagers/appDraftsManager';
-import type { ConnectionStatusChange } from './mtproto/connectionStatus';
-import type { GroupCallId } from './appManagers/appGroupCallsManager';
-import type { AppManagers } from './appManagers/managers';
+import { MOUNT_CLASS_TO } from '../config/debug';
 import type { State } from '../config/state';
-import type { Progress } from './appManagers/appDownloadManager';
+import { IS_WORKER } from '../helpers/context';
+import EventListenerBase from '../helpers/eventListenerBase';
+import type { Config, GroupCall, GroupCallParticipant, Message, NotifyPeer, PeerNotifySettings, PhoneCall, Poll, PollResults, Reaction, ReactionCount, StickerSet, Update, WebPage } from '../layer';
 import type { CallId } from './appManagers/appCallsManager';
 import type { MyDocument } from './appManagers/appDocsManager';
-import { NULL_PEER_ID, UserAuth } from './mtproto/mtproto_config';
-import EventListenerBase from '../helpers/eventListenerBase';
-import { MOUNT_CLASS_TO } from '../config/debug';
-import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import { IS_WORKER } from '../helpers/context';
+import type { Progress } from './appManagers/appDownloadManager';
+import type { MyDraftMessage } from './appManagers/appDraftsManager';
+import type { GroupCallId } from './appManagers/appGroupCallsManager';
+import type { Dialog, MessagesStorageKey, MyMessage } from './appManagers/appMessagesManager';
+import type { UserTyping } from './appManagers/appProfileManager';
+import type { AppManagers } from './appManagers/managers';
 import { MTAppConfig } from './mtproto/appConfig';
-import * as ReactDOM from 'react-dom/client';
+import type { ConnectionStatusChange } from './mtproto/connectionStatus';
+import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
+import { NULL_PEER_ID, UserAuth } from './mtproto/mtproto_config';
+import type { Folder } from './storages/dialogs';
+import type { MyDialogFilter } from './storages/filters';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -150,7 +149,8 @@ export type BroadcastEvents = {
   'premium_toggle': boolean,
 
   'config': Config,
-  'app_config': MTAppConfig
+  'app_config': MTAppConfig,
+  'dialog_element_create': any
 };
 
 export type BroadcastEventsListeners = {
@@ -173,7 +173,7 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
     this.connectionStatus = {};
     this.premium = false;
     this.allDispatch = {}
-    
+
     this.addEventListener('user_auth', ({ id }) => {
       this.myId = id.toPeerId();
     });
