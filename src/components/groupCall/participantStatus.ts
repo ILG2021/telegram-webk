@@ -30,7 +30,6 @@ export default class GroupCallParticipantStatusElement {
       return i;
     });
 
-    console.log("更新了：" + JSON.stringify(participant));
     let element2: HTMLElement, actionClassName: string;
     if (state === states.MUTED_FOR_ME) {
       element2 = i18n('VoiceChat.Status.MutedForYou');

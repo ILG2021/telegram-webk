@@ -4245,6 +4245,9 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    // @ts-ignore
+    this.rootScope.dispatchEvent("onUpdateMessageReactions", { peerId, reactions, oldMessage: message });
+
     const recentReactions = reactions?.recent_reactions;
     if (recentReactions?.length && message.pFlags.out) {
       const recentReaction = recentReactions[recentReactions.length - 1];
