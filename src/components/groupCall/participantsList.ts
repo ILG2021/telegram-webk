@@ -6,14 +6,15 @@
 
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
-import {fastRaf} from '../../helpers/schedulers';
-import SortedList, {SortedElementBase} from '../../helpers/sortedList';
-import appDialogsManager, {DialogDom, AppDialogsManager, DialogElementSize} from '../../lib/appManagers/appDialogsManager';
-import {getGroupCallParticipantMutedState} from '.';
+import { fastRaf } from '../../helpers/schedulers';
+import SortedList, { SortedElementBase } from '../../helpers/sortedList';
+import appDialogsManager, { DialogDom, AppDialogsManager, DialogElementSize } from '../../lib/appManagers/appDialogsManager';
+import { getGroupCallParticipantMutedState } from '.';
 import GroupCallParticipantMutedIcon from './participantMutedIcon';
 import GroupCallParticipantStatusElement from './participantStatus';
 import type GroupCallInstance from '../../lib/calls/groupCallInstance';
 import type LazyLoadQueue from '../lazyLoadQueue';
+import { GROUP_CALL_PARTICIPANT_MUTED_STATE } from '.';
 
 interface SortedParticipant extends SortedElementBase {
   dom: DialogDom,
@@ -28,16 +29,19 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
   protected avatarSize: DialogElementSize = 'abitbigger';
   protected rippleEnabled = true;
   protected autonomous = true;
-  protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0] = {/* new: true,  */dialogSize: 72};
+  protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0] = {/* new: true,  */dialogSize: 72 };
 
   constructor(private instance: GroupCallInstance) {
     super({
-      getIndex: async(element) => (await this.instance.getParticipantByPeerId(element.id)).date,
+      getIndex: async (element) => {
+        const participant = await this.instance.getParticipantByPeerId(element.id);
+        return getGroupCallParticipantMutedState(participant) == GROUP_CALL_PARTICIPANT_MUTED_STATE.UNMUTED ? participant.date * 10 : participant.date
+      },
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onElementDestroy(element);
       },
-      onUpdate: async(element) => {
+      onUpdate: async (element) => {
         const participant = await this.instance.getParticipantByPeerId(element.id);
         const state = getGroupCallParticipantMutedState(participant);
 
@@ -48,7 +52,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
         positionElementByIndex(element.dom.listEl, this.list, idx);
       },
       onElementCreate: (base) => {
-        const {dom} = appDialogsManager.addDialogNew({
+        const { dom } = appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
           avatarSize: this.avatarSize,

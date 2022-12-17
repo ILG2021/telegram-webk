@@ -11,11 +11,11 @@
 
 import type GroupCallConnectionInstance from '../calls/groupCallConnectionInstance';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {nextRandomUint} from '../../helpers/random';
-import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '../../layer';
-import {logger} from '../logger';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
-import {AppManager} from './manager';
+import { nextRandomUint } from '../../helpers/random';
+import { DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates } from '../../layer';
+import { logger } from '../logger';
+import { NULL_PEER_ID } from '../mtproto/mtproto_config';
+import { AppManager } from './manager';
 import getPeerId from './utils/peers/getPeerId';
 
 export type GroupCallId = GroupCall['id'];
@@ -71,7 +71,7 @@ export class AppGroupCallsManager extends AppManager {
     });
 
     this.rootScope.addEventListener('group_call_update', (groupCall) => {
-      if(groupCall._ === 'groupCallDiscarded') {
+      if (groupCall._ === 'groupCallDiscarded') {
         this.participants.delete(groupCall.id);
       }
     });
@@ -79,7 +79,7 @@ export class AppGroupCallsManager extends AppManager {
 
   public getCachedParticipants(groupCallId: GroupCallId) {
     let participants = this.participants.get(groupCallId);
-    if(!participants) {
+    if (!participants) {
       this.participants.set(groupCallId, participants = new Map());
     }
 
@@ -90,7 +90,7 @@ export class AppGroupCallsManager extends AppManager {
     const nextOffsetsMap = this.nextOffsets;
 
     const setNextOffset = (newNextOffset: string) => {
-      if(nextOffsetsMap.get(groupCallId) === nextOffset) {
+      if (nextOffsetsMap.get(groupCallId) === nextOffset) {
         nextOffsetsMap.set(groupCallId, newNextOffset);
       }
     };
@@ -109,16 +109,16 @@ export class AppGroupCallsManager extends AppManager {
 
     const oldParticipant = participants.get(peerId);
     const hasLeft = participant.pFlags.left;
-    if(!oldParticipant && hasLeft) {
+    if (!oldParticipant && hasLeft) {
       return;
     }
 
     // * fix missing flag
-    if(!participant.pFlags.muted && !participant.pFlags.can_self_unmute) {
+    if (!participant.pFlags.muted && !participant.pFlags.can_self_unmute) {
       participant.pFlags.can_self_unmute = true;
     }
 
-    if(oldParticipant) {
+    if (oldParticipant) {
       safeReplaceObject(oldParticipant, participant);
       participant = oldParticipant;
     } else {
@@ -127,27 +127,27 @@ export class AppGroupCallsManager extends AppManager {
 
     // if(!skipCounterUpdating) {
     const groupCall = this.getGroupCall(groupCallId);
-    if(groupCall?._ === 'groupCall') {
+    if (groupCall?._ === 'groupCall') {
       let modified = false;
-      if(hasLeft) {
+      if (hasLeft) {
         --groupCall.participants_count;
         modified = true;
-      } else if(participant.pFlags.just_joined && !oldParticipant && !participant.pFlags.self) {
+      } else if (participant.pFlags.just_joined && !oldParticipant && !participant.pFlags.self) {
         ++groupCall.participants_count;
         modified = true;
       }
 
-      if(modified) {
+      if (modified) {
         this.rootScope.dispatchEvent('group_call_update', groupCall);
       }
     }
     // }
 
-    if(hasLeft) {
+    if (hasLeft) {
       participants.delete(peerId);
     }
 
-    if(oldParticipant || true/*  && this.doNotDispatchParticipantUpdate !== peerId */) {
+    if (oldParticipant || true/*  && this.doNotDispatchParticipantUpdate !== peerId */) {
       this.rootScope.dispatchEvent('group_call_participant', {
         groupCallId,
         participant
@@ -156,7 +156,7 @@ export class AppGroupCallsManager extends AppManager {
   }
 
   public saveApiParticipants(groupCallId: GroupCallId, apiParticipants: GroupCallParticipant[], skipCounterUpdating?: boolean) {
-    if((apiParticipants as any).saved) return;
+    if ((apiParticipants as any).saved) return;
     (apiParticipants as any).saved = true;
     apiParticipants.forEach((p) => this.saveApiParticipant(groupCallId, p, skipCounterUpdating));
   }
@@ -195,7 +195,7 @@ export class AppGroupCallsManager extends AppManager {
 
   public async getGroupCallFull(id: GroupCallId, override?: boolean): Promise<GroupCall> {
     const call = this.getGroupCall(id);
-    if(call && call._ !== 'inputGroupCall' && !override) {
+    if (call && call._ !== 'inputGroupCall' && !override) {
       return call;
     }
 
@@ -213,7 +213,7 @@ export class AppGroupCallsManager extends AppManager {
         this.saveApiParticipants(id, groupCall.participants, true);
         const call = this.saveGroupCall(groupCall.call) as GroupCall;
 
-        if(limit && this.nextOffsets.get(id) === undefined) {
+        if (limit && this.nextOffsets.get(id) === undefined) {
           this.nextOffsets.set(id, groupCall.participants_next_offset);
         }
 
@@ -225,8 +225,8 @@ export class AppGroupCallsManager extends AppManager {
   public saveGroupCall(call: MyGroupCall, chatId?: ChatId) {
     const oldCall = this.groupCalls.get(call.id);
     const shouldUpdate = call._ !== 'inputGroupCall' && (!oldCall || oldCall._ !== 'groupCallDiscarded');
-    if(oldCall) {
-      if(shouldUpdate) {
+    if (oldCall) {
+      if (shouldUpdate) {
         safeReplaceObject(oldCall, call);
       }
 
@@ -235,7 +235,7 @@ export class AppGroupCallsManager extends AppManager {
       this.groupCalls.set(call.id, call);
     }
 
-    if(shouldUpdate) {
+    if (shouldUpdate) {
       this.rootScope.dispatchEvent('group_call_update', call as any);
     }
 
@@ -253,6 +253,8 @@ export class AppGroupCallsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
 
     const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateGroupCall') as Update.updateGroupCall;
+    // @ts-ignore
+    this.rootScope.dispatchEvent("createGroupCall", chatId);
     return update.call;
   }
 
@@ -283,9 +285,9 @@ export class AppGroupCallsManager extends AppManager {
   // }
 
   public async getGroupCallParticipants(id: GroupCallId) {
-    const {nextOffset, setNextOffset} = this.prepareToSavingNextOffset(id);
+    const { nextOffset, setNextOffset } = this.prepareToSavingNextOffset(id);
 
-    if(nextOffset !== '') {
+    if (nextOffset !== '') {
       await this.apiManager.invokeApiSingleProcess({
         method: 'phone.getGroupParticipants',
         params: {
@@ -316,11 +318,11 @@ export class AppGroupCallsManager extends AppManager {
   public hangUp(id: GroupCallId, discard?: boolean | number) {
     const groupCallInput = this.getGroupCallInput(id);
     let promise: Promise<Updates>;
-    if(typeof(discard) === 'boolean' && discard) {
+    if (typeof (discard) === 'boolean' && discard) {
       promise = this.apiManager.invokeApi('phone.discardGroupCall', {
         call: groupCallInput
       });
-    } else if(typeof(discard) === 'number') {
+    } else if (typeof (discard) === 'number') {
       promise = this.apiManager.invokeApi('phone.leaveGroupCall', {
         call: groupCallInput,
         source: discard
@@ -346,7 +348,7 @@ export class AppGroupCallsManager extends AppManager {
   public async joinGroupCall(groupCallId: GroupCallId, params: DataJSON, options: GroupCallConnectionInstance['options']) {
     const groupCallInput = this.getGroupCallInput(groupCallId);
     let promise: Promise<Updates>;
-    if(options.type === 'main') {
+    if (options.type === 'main') {
       const request: PhoneJoinGroupCall = {
         call: groupCallInput,
         join_as: this.appPeersManager.getInputPeerSelf(),

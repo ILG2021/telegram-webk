@@ -90,6 +90,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
         this.cleanup();
       }
     });
+    
   }
 
   get connectionState() {
@@ -176,10 +177,10 @@ export default class GroupCallInstance extends CallInstanceBase<{
       audio: constraint,
       video: false
     }, this.isMuted).then((stream) => {
-      this.streamManager.inputStream.getAudioTracks().forEach(x=>{
+      this.streamManager.inputStream.getAudioTracks().forEach(x => {
         this.streamManager.removeTrack(x)
       })
-      
+
       this.onInputStream(stream)
     });
   }
@@ -483,13 +484,23 @@ export default class GroupCallInstance extends CallInstanceBase<{
       key.forEach(async x => {
         if (x.source == source) {
           const participant = await this.getParticipantByPeerId(value);
-          participant.isSpeaking = isSpeaking;
-          console.log("setisspeaking:" + JSON.stringify(participant))
-          this.managers.appGroupCallsManager.saveApiParticipant(this.id, participant);
-          rootScope.dispatchEvent('group_call_participant', { groupCallId: this.id, participant });
+          if (participant.isSpeaking != isSpeaking) {
+            participant.isSpeaking = isSpeaking;
+            this.managers.appGroupCallsManager.saveApiParticipant(this.id, participant);
+            rootScope.dispatchEvent('group_call_participant', { groupCallId: this.id, participant });
+          }
         }
       })
     })
+  }
+
+  public async setMeSpeaking(isSpeaking: boolean) {
+    const participant = await this.getParticipantByPeerId(rootScope.myId);
+    if (participant.isSpeaking != isSpeaking) {
+      participant.isSpeaking = isSpeaking;
+      this.managers.appGroupCallsManager.saveApiParticipant(this.id, participant);
+      rootScope.dispatchEvent('group_call_participant', { groupCallId: this.id, participant });
+    }
   }
 
   public onParticipantUpdate(participant: GroupCallParticipant, doNotDispatchParticipantUpdate?: PeerId) {

@@ -6,30 +6,29 @@
 
 import cancelEvent from '../helpers/dom/cancelEvent';
 import { attachClickEvent } from '../helpers/dom/clickEvent';
+import replaceContent from '../helpers/dom/replaceContent';
 import ListenerSetter from '../helpers/listenerSetter';
+import throttle from '../helpers/schedulers/throttle';
+import { AppManagers } from '../lib/appManagers/managers';
+import CallInstance from '../lib/calls/callInstance';
+import callsController from '../lib/calls/callsController';
+import CALL_STATE from '../lib/calls/callState';
+import GroupCallInstance from '../lib/calls/groupCallInstance';
+import groupCallsController from '../lib/calls/groupCallsController';
 import GROUP_CALL_STATE from '../lib/calls/groupCallState';
+import StreamManager from '../lib/calls/streamManager';
 import rootScope from '../lib/rootScope';
 import ButtonIcon from './buttonIcon';
-import TopbarWeave from './topbarWeave';
-import SetTransition from './singleTransition';
+import PopupCall from './call';
+import CallDescriptionElement from './call/description';
 import PopupGroupCall from './groupCall';
 import GroupCallDescriptionElement from './groupCall/description';
-import GroupCallTitleElement from './groupCall/title';
-import PopupElement from './popups';
-import throttle from '../helpers/schedulers/throttle';
-import GroupCallInstance from '../lib/calls/groupCallInstance';
-import CALL_STATE from '../lib/calls/callState';
-import replaceContent from '../helpers/dom/replaceContent';
-import PeerTitle from './peerTitle';
-import CallDescriptionElement from './call/description';
-import PopupCall from './call';
 import GroupCallMicrophoneIconMini from './groupCall/microphoneIconMini';
-import CallInstance from '../lib/calls/callInstance';
-import { AppManagers } from '../lib/appManagers/managers';
-import groupCallsController from '../lib/calls/groupCallsController';
-import StreamManager from '../lib/calls/streamManager';
-import callsController from '../lib/calls/callsController';
-import { toTelegramSource } from '../lib/calls/utils';
+import GroupCallTitleElement from './groupCall/title';
+import PeerTitle from './peerTitle';
+import PopupElement from './popups';
+import SetTransition from './singleTransition';
+import TopbarWeave from './topbarWeave';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch (state) {
@@ -99,41 +98,6 @@ export default class TopbarCall {
       }
 
       weave.setAmplitude(max);
-
-      const currentGroupCall = groupCallsController.groupCall;
-      if (currentGroupCall) {
-        const { isSpeakingMap, id } = currentGroupCall;
-
-        for (let i = 0; i < amplitudes.length; i++) {
-          const { type, source, value } = amplitudes[i];
-
-          let params = isSpeakingMap.get(source);
-          if (!params) {
-            params = { isSpeaking: false, speakingTimer: null, cancelSpeakingTimer: null };
-            isSpeakingMap.set(source, params);
-          }
-
-          const isSpeaking = value > 0.2;
-          if (isSpeaking !== params.isSpeaking) {
-            params.isSpeaking = isSpeaking;
-            if (isSpeaking) {
-              clearTimeout(params.cancelSpeakingTimer);
-              params.speakingTimer = setTimeout(() => {
-                if (params.isSpeaking) {
-                  currentGroupCall.setIsSpeaking(parseInt(source), true)
-                }
-              }, 150);
-            } else {
-              clearTimeout(params.cancelSpeakingTimer);
-              params.cancelSpeakingTimer = setTimeout(() => {
-                if (!params.isSpeaking) {
-                  currentGroupCall.setIsSpeaking(parseInt(source), false)
-                }
-              }, 1000);
-            }
-          }
-        }
-      }
     });
   }
 
