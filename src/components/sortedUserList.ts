@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, {AppDialogsManager, DialogDom, DialogElementSize} from '../lib/appManagers/appDialogsManager';
-import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import isInDOM from '../helpers/dom/isInDOM';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
 import replaceContent from '../helpers/dom/replaceContent';
-import {fastRaf} from '../helpers/schedulers';
-import SortedList, {SortedElementBase} from '../helpers/sortedList';
 import safeAssign from '../helpers/object/safeAssign';
-import {AppManagers} from '../lib/appManagers/managers';
-import getUserStatusString from './wrappers/getUserStatusString';
+import { fastRaf } from '../helpers/schedulers';
+import SortedList, { SortedElementBase } from '../helpers/sortedList';
+import { getHeavyAnimationPromise } from '../hooks/useHeavyAnimationCheck';
+import appDialogsManager, { AppDialogsManager, DialogDom, DialogElementSize } from '../lib/appManagers/appDialogsManager';
+import { AppManagers } from '../lib/appManagers/managers';
 import type LazyLoadQueue from './lazyLoadQueue';
+import getUserStatusString from './wrappers/getUserStatusString';
 
 interface SortedUser extends SortedElementBase {
   dom: DialogDom
@@ -52,7 +52,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         element.dom.listEl.remove();
         this.onListLengthChange && this.onListLengthChange();
       },
-      onUpdate: options.onUpdate || (async(element) => {
+      onUpdate: options.onUpdate || (async (element) => {
         const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));
         replaceContent(element.dom.lastMessageSpan, status);
       }),
@@ -60,33 +60,36 @@ export default class SortedUserList extends SortedList<SortedUser> {
         const willChangeLength = element.dom.listEl.parentElement !== this.list;
         positionElementByIndex(element.dom.listEl, this.list, idx);
 
-        if(willChangeLength && this.onListLengthChange) {
+        if (willChangeLength && this.onListLengthChange) {
           this.onListLengthChange();
         }
       },
       onElementCreate: (base) => {
-        const {dom} = appDialogsManager.addDialogNew({
+        const { dom } = appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
           avatarSize: this.avatarSize,
           autonomous: this.autonomous,
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
-          lazyLoadQueue: this.lazyLoadQueue
+          lazyLoadQueue: this.lazyLoadQueue,
         });
+        dom.lastTimeSpan.innerHTML = "🆔";
+        //@ts-ignore
+        dom.lastTimeSpan.style = 'font-size: 180%; background: inherit;';
 
         (base as SortedUser).dom = dom;
         return base as SortedUser;
       },
       updateElementWith: fastRaf,
-      updateListWith: async(callback) => {
-        if(!isInDOM(this.list)) {
+      updateListWith: async (callback) => {
+        if (!isInDOM(this.list)) {
           return callback(false);
         }
 
         await getHeavyAnimationPromise();
 
-        if(!isInDOM(this.list)) {
+        if (!isInDOM(this.list)) {
           return callback(false);
         }
 
@@ -102,7 +105,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
     const doTimeout = () => {
       timeout = window.setTimeout(() => {
         this.updateList((good) => {
-          if(good) {
+          if (good) {
             doTimeout();
           }
         });

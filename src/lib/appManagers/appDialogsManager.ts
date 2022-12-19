@@ -8,6 +8,7 @@ import appMediaPlaybackController from '../../components/appMediaPlaybackControl
 import appNavigationController, { NavigationItem } from '../../components/appNavigationController';
 import AvatarElement from '../../components/avatar';
 import Button from '../../components/button';
+import makeButton from '../../components/call/button';
 import ConnectionStatusComponent from '../../components/connectionStatus';
 import DialogsContextMenu from '../../components/dialogsContextMenu';
 import groupCallActiveIcon from '../../components/groupCallActiveIcon';
@@ -293,7 +294,6 @@ class DialogElement extends Row {
     rightSpan.append(statusSpan, lastTimeSpan);
 
     this.subtitleRow.classList.add('dialog-subtitle');
-
     const dom: DialogDom = this.dom = {
       avatarEl,
       captionDiv,

@@ -75,6 +75,8 @@ import wrapPhoto from './wrappers/photo';
 import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
 import replaceContent from '../helpers/dom/replaceContent';
+import { copyTextToClipboard } from '../helpers/clipboard';
+import { toast } from './toast';
 
 // const testScroll = false;
 
@@ -1166,12 +1168,22 @@ export default class AppSearchSuper {
           }
         });
         attachClickEvent(this.membersList.list, (e) => {
+          console.log("目标", e);
           const li = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
           if (!li) {
             return;
           }
 
+          // messageTimeSpan放的是ID图标
           const peerId = li.dataset.peerId.toPeerId();
+          const messageTimeSpan = li.getElementsByClassName("message-time")[0];
+          const spanRect = messageTimeSpan.getBoundingClientRect()
+          if (e.clientX > spanRect.left && e.clientX < spanRect.right && e.clientY > spanRect.top && e.clientY < spanRect.bottom) {
+            copyTextToClipboard(peerId + "");
+            toast("ID已复制");
+            return;
+          }
+
           let promise: Promise<any> = Promise.resolve();
           if (mediaSizes.isMobile) {
             promise = appSidebarRight.toggleSidebar(false);

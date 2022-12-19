@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CheckboxField, {CheckboxFieldOptions} from './checkboxField';
-import RadioField from './radioField';
-import ripple from './ripple';
-import {SliderSuperTab} from './slider';
-import RadioForm from './radioForm';
-import {i18n, LangPackKey} from '../lib/langPack';
+import { attachClickEvent } from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
+import { i18n, LangPackKey } from '../lib/langPack';
 import Button from './button';
+import CheckboxField, { CheckboxFieldOptions } from './checkboxField';
+import RadioField from './radioField';
+import RadioForm from './radioForm';
+import ripple from './ripple';
+import { SliderSuperTab } from './slider';
 
 type K = string | HTMLElement | DocumentFragment | true;
 
