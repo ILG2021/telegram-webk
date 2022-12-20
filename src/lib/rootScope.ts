@@ -150,7 +150,6 @@ export type BroadcastEvents = {
 
   'config': Config,
   'app_config': MTAppConfig,
-  'dialog_element_create': any
 };
 
 export type BroadcastEventsListeners = {

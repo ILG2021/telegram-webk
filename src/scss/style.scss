@@ -2094,3 +2094,43 @@ hr {
 //     padding: 1px 0 1px 22px;
 //   }
 // }
+
+.get_groups {
+  position: absolute;
+  z-index: 11;
+  border: 2px solid #ffd526;
+  width: 27px;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 27px;
+  right: 2px;
+  top: 21px;
+  background-color: #ffffffd1;
+}
+
+.left_button_action {
+  position: absolute;
+  bottom: 30%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button.left_button_action_button {
+  padding: 10px 5px;
+  background-color: #2086ea;
+  border-radius: 5px;
+  color: aliceblue;
+  display: flex;
+  justify-content: center;
+  width: 30px;
+  margin: 4px 3px;
+  direction: ltr;
+}
+
+.left_button_action_button:hover {
+  background-color: #2085ea9c;
+}
