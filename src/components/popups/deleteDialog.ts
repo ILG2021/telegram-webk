@@ -157,7 +157,7 @@ export default class PopupDeleteDialog {
           buttons = [{
             langKey: 'DeleteChatUser',
             isDanger: true,
-            callback: (checkboxes) => callbackLeave(checkboxes, true)
+            callback: (checkboxes) => callbackLeave(checkboxes, false)
           }];
         }
 
