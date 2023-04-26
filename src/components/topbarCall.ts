@@ -16,7 +16,6 @@ import CALL_STATE from '../lib/calls/callState';
 import GroupCallInstance from '../lib/calls/groupCallInstance';
 import groupCallsController from '../lib/calls/groupCallsController';
 import GROUP_CALL_STATE from '../lib/calls/groupCallState';
-import StreamManager from '../lib/calls/streamManager';
 import rootScope from '../lib/rootScope';
 import ButtonIcon from './buttonIcon';
 import PopupCall from './call';
@@ -28,7 +27,6 @@ import GroupCallTitleElement from './groupCall/title';
 import PeerTitle from './peerTitle';
 import PopupElement from './popups';
 import SetTransition from './singleTransition';
-import TopbarWeave from './topbarWeave';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch (state) {
@@ -47,7 +45,7 @@ const CLASS_NAME = 'topbar-call';
 export default class TopbarCall {
   public container: HTMLElement;
   private listenerSetter: ListenerSetter;
-  private weave: TopbarWeave;
+  // private weave: TopbarWeave;
   private center: HTMLDivElement;
   private groupCallTitle: GroupCallTitleElement;
   private groupCallDescription: GroupCallDescriptionElement;
@@ -87,18 +85,18 @@ export default class TopbarCall {
       }
     });
 
-    listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({ amplitudes, type }) => {
-      const { weave } = this;
-      if (!amplitudes.length || !weave/*  || type !== 'input' */) return;
+    // listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({ amplitudes, type }) => {
+    //   const { weave } = this;
+    //   if (!amplitudes.length || !weave/*  || type !== 'input' */) return;
 
-      let max = 0;
-      for (let i = 0; i < amplitudes.length; ++i) {
-        const { type, value } = amplitudes[i];
-        max = value > max ? value : max;
-      }
+    //   let max = 0;
+    //   for (let i = 0; i < amplitudes.length; ++i) {
+    //     const { type, value } = amplitudes[i];
+    //     max = value > max ? value : max;
+    //   }
 
-      weave.setAmplitude(max);
-    });
+    //   weave.setAmplitude(max);
+    // });
   }
 
   private onState = () => {
@@ -146,18 +144,18 @@ export default class TopbarCall {
     const isMuted = this.instance.isMuted;
     const state = instance instanceof GroupCallInstance ? instance.state : convertCallStateToGroupState(instance.connectionState, isMuted);
 
-    const { weave } = this;
+    // const { weave } = this;
 
-    weave.componentDidMount();
+    // weave.componentDidMount();
 
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
     if ((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
-      if (isClosed) {
-        weave.setAmplitude(0);
-      }
+      // if (isClosed) {
+      //   weave.setAmplitude(0);
+      // }
 
       SetTransition(document.body, 'is-calling', !isClosed, 250, isClosed ? () => {
-        weave.componentWillUnmount();
+        // weave.componentWillUnmount();
 
         this.clearCurrentInstance();
       } : undefined);
@@ -167,7 +165,8 @@ export default class TopbarCall {
       return;
     }
 
-    weave.setCurrentState(state, true);
+    this.setCurrentState(state)
+    // weave.setCurrentState(state, true);
     // if(state === GROUP_CALL_STATE.CONNECTING) {
     //   weave.setCurrentState(state, true);
     // } else {
@@ -185,6 +184,23 @@ export default class TopbarCall {
     this.setTitle(instance);
     this.setDescription(instance);
     this.groupCallMicrophoneIconMini.setState(!isMuted);
+  }
+
+  private setCurrentState(state: GROUP_CALL_STATE) {
+    switch(state) {
+      case GROUP_CALL_STATE.UNMUTED:
+        this.container.style.background = "linear-gradient(to right, #52CE5D, #00B1C0)";
+        break;
+      case GROUP_CALL_STATE.MUTED:
+        this.container.style.background = "linear-gradient(to right, #0976E3, #2BCEFF)";
+        break;
+      case GROUP_CALL_STATE.MUTED_BY_ADMIN:
+        this.container.style.background = "linear-gradient(to right, #F05459, #766EE9 40%, #57A4FE)";
+        break;
+      default:
+        this.container.style.background = "#8599aa";
+        break;
+    }
   }
 
   private setDescription(instance: TopbarCall['instance']) {
@@ -270,11 +286,12 @@ export default class TopbarCall {
 
     container.append(left, center, right);
 
-    const weave = this.weave = new TopbarWeave();
+    /* const weave = this.weave = new TopbarWeave();
     const weaveContainer = weave.render(CLASS_NAME + '-weave');
-    container.prepend(weaveContainer);
+    container.prepend(weaveContainer); */
 
     document.getElementById('column-center').prepend(container);
-    weave.componentDidMount();
+    // weave.componentDidMount();
   }
 }
+
