@@ -9,18 +9,39 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { MyTopPeer } from './appUsersManager';
-import tsNow from '../../helpers/tsNow';
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates } from '../../layer';
-import SearchIndex from '../searchIndex';
-import { AppManager } from './manager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
-import getPhotoInput from './utils/photos/getPhotoInput';
-import getParticipantPeerId from './utils/chats/getParticipantPeerId';
-import ctx from '../../environment/ctx';
-import { ReferenceContext } from '../mtproto/referenceDatabase';
+import type { MyTopPeer } from "./appUsersManager";
+import tsNow from "../../helpers/tsNow";
+import {
+  ChannelParticipantsFilter,
+  ChannelsChannelParticipants,
+  ChannelParticipant,
+  Chat,
+  ChatFull,
+  ChatParticipants,
+  ChatPhoto,
+  ExportedChatInvite,
+  InputChannel,
+  InputFile,
+  SendMessageAction,
+  Update,
+  UserFull,
+  Photo,
+  PhotoSize,
+  Updates,
+} from "../../layer";
+import SearchIndex from "../searchIndex";
+import { AppManager } from "./manager";
+import getServerMessageId from "./utils/messageId/getServerMessageId";
+import getPhotoInput from "./utils/photos/getPhotoInput";
+import getParticipantPeerId from "./utils/chats/getParticipantPeerId";
+import ctx from "../../environment/ctx";
+import { ReferenceContext } from "../mtproto/referenceDatabase";
 
-export type UserTyping = Partial<{ userId: UserId, action: SendMessageAction, timeout: number }>;
+export type UserTyping = Partial<{
+  userId: UserId;
+  action: SendMessageAction;
+  timeout: number;
+}>;
 
 const PEER_FULL_TTL = 3 * 60e3;
 
@@ -31,16 +52,54 @@ export class AppProfileManager extends AppManager {
   private fullExpiration: { [peerId: PeerId]: number } = {};
   private typingsInPeer: { [peerId: PeerId]: UserTyping[] };
 
+  private diffArrays(
+    oldArr: Array<string | number>,
+    newArr: Array<string | number>
+  ) {
+    const deleteArr = oldArr.filter((item) => !newArr.includes(item));
+    const addArr = newArr.filter((item) => !oldArr.includes(item));
+
+    return { deleteArr, addArr };
+  }
+
+  private dispatchDiff(
+    oldParticipants: ChatParticipants,
+    newParticipants: ChatParticipants
+  ) {
+    const chatId = newParticipants.chat_id;
+    const peerId = chatId.toPeerId(true);
+    const oldIds = (
+      oldParticipants as ChatParticipants.chatParticipants
+    ).participants.map((x) => x.user_id);
+    const newIds = (
+      newParticipants as ChatParticipants.chatParticipants
+    ).participants.map((x) => x.user_id);
+    const { deleteArr, addArr } = this.diffArrays(oldIds, newIds);
+    if (deleteArr.length > 0)
+      // @ts-ignore
+      this.rootScope.dispatchEvent("chat_participant_delete", {
+        peerId,
+        uids: deleteArr,
+      });
+    if (addArr.length > 0)
+      // @ts-ignore
+      this.rootScope.dispatchEvent("chat_participant_add", {
+        peerId,
+        uids: addArr,
+      });
+  }
+
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateChatParticipants: (update) => {
         const participants = update.participants;
-        if (participants._ === 'chatParticipants') {
+        if (participants._ === "chatParticipants") {
           const chatId = participants.chat_id;
           const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
           if (chatFull !== undefined) {
+            this.dispatchDiff(chatFull.participants, participants);
             chatFull.participants = participants;
-            this.rootScope.dispatchEvent('chat_full_update', chatId);
+            this.rootScope.dispatchEvent("chat_full_update", chatId);
           }
         }
       },
@@ -48,7 +107,8 @@ export class AppProfileManager extends AppManager {
       updateChatParticipantAdd: (update) => {
         const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
         if (chatFull !== undefined) {
-          const _participants = chatFull.participants as ChatParticipants.chatParticipants;
+          const _participants =
+            chatFull.participants as ChatParticipants.chatParticipants;
           const participants = _participants.participants || [];
           for (let i = 0, length = participants.length; i < length; i++) {
             if (participants[i].user_id === update.user_id) {
@@ -57,27 +117,28 @@ export class AppProfileManager extends AppManager {
           }
 
           participants.push({
-            _: 'chatParticipant',
+            _: "chatParticipant",
             user_id: update.user_id,
             inviter_id: update.inviter_id,
-            date: tsNow(true)
+            date: tsNow(true),
           });
 
           _participants.version = update.version;
-          this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
+          this.rootScope.dispatchEvent("chat_full_update", update.chat_id);
         }
       },
 
       updateChatParticipantDelete: (update) => {
         const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
         if (chatFull !== undefined) {
-          const _participants = chatFull.participants as ChatParticipants.chatParticipants;
+          const _participants =
+            chatFull.participants as ChatParticipants.chatParticipants;
           const participants = _participants.participants || [];
           for (let i = 0, length = participants.length; i < length; i++) {
             if (participants[i].user_id === update.user_id) {
               participants.splice(i, 1);
               _participants.version = update.version;
-              this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
+              this.rootScope.dispatchEvent("chat_full_update", update.chat_id);
               return;
             }
           }
@@ -88,12 +149,16 @@ export class AppProfileManager extends AppManager {
       updateChatUserTyping: this.onUpdateUserTyping,
       updateChannelUserTyping: this.onUpdateUserTyping,
 
-      updatePeerBlocked: this.onUpdatePeerBlocked
+      updatePeerBlocked: this.onUpdatePeerBlocked,
     });
 
-    this.rootScope.addEventListener('chat_update', (chatId) => {
+    this.rootScope.addEventListener("chat_update", (chatId) => {
       const fullChat = this.chatsFull[chatId];
-      const chat: Chat.chat | Chat.channel | Chat.chatForbidden | Chat.channelForbidden = this.appChatsManager.getChat(chatId);
+      const chat:
+        | Chat.chat
+        | Chat.channel
+        | Chat.chatForbidden
+        | Chat.channelForbidden = this.appChatsManager.getChat(chatId);
       if (!fullChat || !chat) {
         return;
       }
@@ -105,13 +170,13 @@ export class AppProfileManager extends AppManager {
 
       const { photo } = chat as Chat.chat;
       if (photo) {
-        const hasChatPhoto = photo._ !== 'chatPhotoEmpty';
-        const hasFullChatPhoto = !!(fullChat.chat_photo && fullChat.chat_photo._ !== 'photoEmpty'); // chat_photo can be missing
+        const hasChatPhoto = photo._ !== "chatPhotoEmpty";
+        const hasFullChatPhoto = !!(
+          fullChat.chat_photo && fullChat.chat_photo._ !== "photoEmpty"
+        ); // chat_photo can be missing
         if (
-          hasChatPhoto !== hasFullChatPhoto || (
-            hasChatPhoto &&
-            photo.photo_id !== fullChat.chat_photo?.id
-          )
+          hasChatPhoto !== hasFullChatPhoto ||
+          (hasChatPhoto && photo.photo_id !== fullChat.chat_photo?.id)
         ) {
           updated = true;
         }
@@ -122,21 +187,21 @@ export class AppProfileManager extends AppManager {
       }
     });
 
-    this.rootScope.addEventListener('channel_update', (chatId) => {
+    this.rootScope.addEventListener("channel_update", (chatId) => {
       this.refreshFullPeer(chatId.toPeerId(true));
     });
 
     // * genius
-    this.rootScope.addEventListener('chat_full_update', (chatId) => {
-      this.rootScope.dispatchEvent('peer_full_update', chatId.toPeerId(true));
+    this.rootScope.addEventListener("chat_full_update", (chatId) => {
+      this.rootScope.dispatchEvent("peer_full_update", chatId.toPeerId(true));
     });
 
     // * genius
-    this.rootScope.addEventListener('user_full_update', (userId) => {
-      this.rootScope.dispatchEvent('peer_full_update', userId.toPeerId(false));
+    this.rootScope.addEventListener("user_full_update", (userId) => {
+      this.rootScope.dispatchEvent("peer_full_update", userId.toPeerId(false));
     });
 
-    this.rootScope.addEventListener('invalidate_participants', (chatId) => {
+    this.rootScope.addEventListener("invalidate_participants", (chatId) => {
       this.invalidateChannelParticipants(chatId);
     });
 
@@ -164,14 +229,18 @@ export class AppProfileManager extends AppManager {
   } */
 
   public getProfile(id: UserId, override?: true) {
-    if (this.usersFull[id] && !override && Date.now() < this.fullExpiration[id.toPeerId()]) {
+    if (
+      this.usersFull[id] &&
+      !override &&
+      Date.now() < this.fullExpiration[id.toPeerId()]
+    ) {
       return this.usersFull[id];
     }
 
     return this.apiManager.invokeApiSingleProcess({
-      method: 'users.getFullUser',
+      method: "users.getFullUser",
       params: {
-        id: this.appUsersManager.getUserInput(id)
+        id: this.appUsersManager.getUserInput(id),
       },
       processResult: (usersUserFull) => {
         this.appChatsManager.saveApiChats(usersUserFull.chats, true);
@@ -180,19 +249,31 @@ export class AppProfileManager extends AppManager {
         const userFull = usersUserFull.full_user;
         const peerId = id.toPeerId(false);
         if (userFull.profile_photo) {
-          userFull.profile_photo = this.appPhotosManager.savePhoto(userFull.profile_photo, { type: 'profilePhoto', peerId });
+          userFull.profile_photo = this.appPhotosManager.savePhoto(
+            userFull.profile_photo,
+            { type: "profilePhoto", peerId }
+          );
         }
 
         const botInfo = userFull.bot_info;
         if (botInfo) {
-          const referenceContext: ReferenceContext = { type: 'userFull', userId: id };
-          botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
-          botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
+          const referenceContext: ReferenceContext = {
+            type: "userFull",
+            userId: id,
+          };
+          botInfo.description_document = this.appDocsManager.saveDoc(
+            botInfo.description_document,
+            referenceContext
+          );
+          botInfo.description_photo = this.appPhotosManager.savePhoto(
+            botInfo.description_photo,
+            referenceContext
+          );
         }
 
         this.appNotificationsManager.savePeerSettings({
           peerId,
-          settings: userFull.notify_settings
+          settings: userFull.notify_settings,
         });
 
         this.usersFull[id] = userFull;
@@ -204,14 +285,15 @@ export class AppProfileManager extends AppManager {
 
         // appMessagesManager.savePinnedMessage(id, userFull.pinned_msg_id);
 
-        this.rootScope.dispatchEvent('user_full_update', id);
+        this.rootScope.dispatchEvent("user_full_update", id);
         return userFull;
-      }
+      },
     });
   }
 
   public getProfileByPeerId(peerId: PeerId, override?: true) {
-    if (this.appPeersManager.isAnyChat(peerId)) return this.getChatFull(peerId.toChatId(), override);
+    if (this.appPeersManager.isAnyChat(peerId))
+      return this.getChatFull(peerId.toChatId(), override);
     else return this.getProfile(peerId.toUserId(), override);
   }
 
@@ -224,16 +306,18 @@ export class AppProfileManager extends AppManager {
   }
 
   public getCachedProfileByPeerId(peerId: PeerId) {
-    return peerId.isUser() ? this.getCachedFullUser(peerId.toUserId()) : this.getCachedFullChat(peerId.toChatId());
+    return peerId.isUser()
+      ? this.getCachedFullUser(peerId.toUserId())
+      : this.getCachedFullChat(peerId.toChatId());
   }
 
   public async getFullPhoto(peerId: PeerId) {
     const profile = await this.getProfileByPeerId(peerId);
     switch (profile._) {
-      case 'userFull':
+      case "userFull":
         return profile.profile_photo;
-      case 'channelFull':
-      case 'chatFull':
+      case "channelFull":
+      case "chatFull":
         return profile.chat_photo;
     }
   }
@@ -274,23 +358,27 @@ export class AppProfileManager extends AppManager {
       if (
         chat.pFlags.left ||
         chat.pFlags.deactivated ||
-        chat.version === (fullChat.participants as ChatParticipants.chatParticipants).version
+        chat.version ===
+          (fullChat.participants as ChatParticipants.chatParticipants).version
       ) {
         return fullChat as ChatFull;
       }
     }
 
     return this.apiManager.invokeApiSingleProcess({
-      method: 'messages.getFullChat',
+      method: "messages.getFullChat",
       params: {
-        chat_id: id
+        chat_id: id,
       },
       processResult: (result) => {
         this.appChatsManager.saveApiChats(result.chats, true);
         this.appUsersManager.saveApiUsers(result.users);
         const chatFull = result.full_chat as ChatFull.chatFull;
         if (chatFull && chatFull.chat_photo && chatFull.chat_photo.id) {
-          chatFull.chat_photo = this.appPhotosManager.savePhoto(chatFull.chat_photo, { type: 'profilePhoto', peerId });
+          chatFull.chat_photo = this.appPhotosManager.savePhoto(
+            chatFull.chat_photo,
+            { type: "profilePhoto", peerId }
+          );
         }
 
         if (chatFull.call) {
@@ -300,59 +388,80 @@ export class AppProfileManager extends AppManager {
         // appMessagesManager.savePinnedMessage(peerId, fullChat.pinned_msg_id);
         this.appNotificationsManager.savePeerSettings({
           peerId,
-          settings: chatFull.notify_settings
+          settings: chatFull.notify_settings,
         });
 
         this.chatsFull[id] = chatFull;
         this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
-        this.rootScope.dispatchEvent('chat_full_update', id);
+        this.rootScope.dispatchEvent("chat_full_update", id);
 
         return chatFull;
-      }
+      },
     });
   }
 
   public async getChatInviteLink(id: ChatId, force?: boolean) {
     const chatFull = await this.getChatFull(id);
-    if (!force &&
+    if (
+      !force &&
       chatFull.exported_invite &&
-      chatFull.exported_invite._ == 'chatInviteExported') {
+      chatFull.exported_invite._ == "chatInviteExported"
+    ) {
       return chatFull.exported_invite.link;
     }
 
-    return this.apiManager.invokeApi('messages.exportChatInvite', {
-      peer: this.appPeersManager.getInputPeerById(id.toPeerId(true))
-    }).then((exportedInvite) => {
-      if (this.chatsFull[id] !== undefined) {
-        this.chatsFull[id].exported_invite = exportedInvite;
-      }
+    return this.apiManager
+      .invokeApi("messages.exportChatInvite", {
+        peer: this.appPeersManager.getInputPeerById(id.toPeerId(true)),
+      })
+      .then((exportedInvite) => {
+        if (this.chatsFull[id] !== undefined) {
+          this.chatsFull[id].exported_invite = exportedInvite;
+        }
 
-      return (exportedInvite as ExportedChatInvite.chatInviteExported).link;
-    });
+        return (exportedInvite as ExportedChatInvite.chatInviteExported).link;
+      });
   }
 
-  public getChannelParticipants(id: ChatId, filter: ChannelParticipantsFilter = { _: 'channelParticipantsRecent' }, limit = 200, offset = 0) {
-    if (filter._ === 'channelParticipantsRecent') {
+  public getChannelParticipants(
+    id: ChatId,
+    filter: ChannelParticipantsFilter = { _: "channelParticipantsRecent" },
+    limit = 200,
+    offset = 0
+  ) {
+    if (filter._ === "channelParticipantsRecent") {
       const chat = this.appChatsManager.getChat(id);
-      if (chat &&
-        chat.pFlags && (
-          // chat.pFlags.kicked ||
-          chat.pFlags.broadcast && !chat.pFlags.creator && !chat.admin_rights
-        )) {
+      if (
+        chat &&
+        chat.pFlags &&
+        // chat.pFlags.kicked ||
+        chat.pFlags.broadcast &&
+        !chat.pFlags.creator &&
+        !chat.admin_rights
+      ) {
         return Promise.reject();
       }
     }
 
-    return this.apiManager.invokeApiCacheable('channels.getParticipants', {
-      channel: this.appChatsManager.getChannelInput(id),
-      filter,
-      offset,
-      limit,
-      hash: '0'
-    }, { cacheSeconds: 60 }).then((result) => {
-      this.appUsersManager.saveApiUsers((result as ChannelsChannelParticipants.channelsChannelParticipants).users);
-      return result as ChannelsChannelParticipants.channelsChannelParticipants;
-    });
+    return this.apiManager
+      .invokeApiCacheable(
+        "channels.getParticipants",
+        {
+          channel: this.appChatsManager.getChannelInput(id),
+          filter,
+          offset,
+          limit,
+          hash: "0",
+        },
+        { cacheSeconds: 60 }
+      )
+      .then((result) => {
+        this.appUsersManager.saveApiUsers(
+          (result as ChannelsChannelParticipants.channelsChannelParticipants)
+            .users
+        );
+        return result as ChannelsChannelParticipants.channelsChannelParticipants;
+      });
     /* let maybeAddSelf = (participants: any[]) => {
       let chat = appChatsManager.getChat(id);
       let selfMustBeFirst = filter._ === 'channelParticipantsRecent' &&
@@ -381,32 +490,41 @@ export class AppProfileManager extends AppManager {
   }
 
   public getChannelParticipant(id: ChatId, peerId: PeerId) {
-    return this.apiManager.invokeApiSingle('channels.getParticipant', {
-      channel: this.appChatsManager.getChannelInput(id),
-      participant: this.appPeersManager.getInputPeerById(peerId)
-    }).then((channelParticipant) => {
-      this.appUsersManager.saveApiUsers(channelParticipant.users);
-      return channelParticipant.participant;
-    });
+    return this.apiManager
+      .invokeApiSingle("channels.getParticipant", {
+        channel: this.appChatsManager.getChannelInput(id),
+        participant: this.appPeersManager.getInputPeerById(peerId),
+      })
+      .then((channelParticipant) => {
+        this.appUsersManager.saveApiUsers(channelParticipant.users);
+        return channelParticipant.participant;
+      });
   }
 
   public getChannelFull(id: ChatId, override?: true) {
     const peerId = id.toPeerId(true);
-    if (this.chatsFull[id] !== undefined && !override && Date.now() < this.fullExpiration[peerId]) {
+    if (
+      this.chatsFull[id] !== undefined &&
+      !override &&
+      Date.now() < this.fullExpiration[peerId]
+    ) {
       return this.chatsFull[id] as ChatFull.channelFull;
     }
 
     return this.apiManager.invokeApiSingleProcess({
-      method: 'channels.getFullChannel',
+      method: "channels.getFullChannel",
       params: {
-        channel: this.appChatsManager.getChannelInput(id)
+        channel: this.appChatsManager.getChannelInput(id),
       },
       processResult: (result) => {
         this.appChatsManager.saveApiChats(result.chats, true);
         this.appUsersManager.saveApiUsers(result.users);
         const fullChannel = result.full_chat as ChatFull.channelFull;
         if (fullChannel && fullChannel.chat_photo.id) {
-          fullChannel.chat_photo = this.appPhotosManager.savePhoto(fullChannel.chat_photo, { type: 'profilePhoto', peerId });
+          fullChannel.chat_photo = this.appPhotosManager.savePhoto(
+            fullChannel.chat_photo,
+            { type: "profilePhoto", peerId }
+          );
           // appPhotosManager.savePhoto(fullChannel.chat_photo);
         }
 
@@ -416,70 +534,92 @@ export class AppProfileManager extends AppManager {
 
         this.appNotificationsManager.savePeerSettings({
           peerId,
-          settings: fullChannel.notify_settings
+          settings: fullChannel.notify_settings,
         });
 
         this.chatsFull[id] = fullChannel;
         this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
-        this.rootScope.dispatchEvent('chat_full_update', id);
+        this.rootScope.dispatchEvent("chat_full_update", id);
 
         return fullChannel;
       },
       processError: (error) => {
         switch (error.type) {
-          case 'CHANNEL_PRIVATE':
-            const channel: Chat.channel | Chat.channelForbidden = this.appChatsManager.getChat(id);
+          case "CHANNEL_PRIVATE":
+            const channel: Chat.channel | Chat.channelForbidden =
+              this.appChatsManager.getChat(id);
             this.apiUpdatesManager.processUpdateMessage({
-              _: 'updates',
-              updates: [{
-                _: 'updateChannel',
-                channel_id: id
-              }],
-              chats: [{
-                _: 'channelForbidden',
-                id,
-                access_hash: channel.access_hash,
-                title: channel.title,
-                pFlags: channel.pFlags
-              }],
-              users: []
+              _: "updates",
+              updates: [
+                {
+                  _: "updateChannel",
+                  channel_id: id,
+                },
+              ],
+              chats: [
+                {
+                  _: "channelForbidden",
+                  id,
+                  access_hash: channel.access_hash,
+                  title: channel.title,
+                  pFlags: channel.pFlags,
+                },
+              ],
+              users: [],
             } as Updates.updates);
             break;
         }
 
         throw error;
-      }
+      },
     });
   }
 
   public async getAdminIds(chatId: ChatId) {
     const chatFull = await this.getChatFull(chatId);
     if (this.appChatsManager.isChannel(chatId)) {
-      const admins = await this.getChannelParticipants(chatId, { _: 'channelParticipantsAdmins' }, 200);
+      const admins = await this.getChannelParticipants(
+        chatId,
+        { _: "channelParticipantsAdmins" },
+        200
+      );
       // @ts-ignore
-      return admins.participants.map(x => x.user_id)
+      return admins.participants.map((x) => x.user_id);
     } else {
-      return ((chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants).participants.filter(x =>
-        x._ == "chatParticipantCreator" || x._ == "chatParticipantAdmin"
-      ).map(x => x.user_id)
+      return (
+        (chatFull as ChatFull.chatFull)
+          .participants as ChatParticipants.chatParticipants
+      ).participants
+        .filter(
+          (x) =>
+            x._ == "chatParticipantCreator" || x._ == "chatParticipantAdmin"
+        )
+        .map((x) => x.user_id);
     }
   }
 
-  public getMentions(chatId: ChatId, query: string, threadId?: number): Promise<PeerId[]> {
+  public getMentions(
+    chatId: ChatId,
+    query: string,
+    threadId?: number
+  ): Promise<PeerId[]> {
     const processUserIds = (topPeers: MyTopPeer[]) => {
-      const startsWithAt = query.charAt(0) === '@';
+      const startsWithAt = query.charAt(0) === "@";
       if (startsWithAt) query = query.slice(1);
       /* const startsWithAt = query.charAt(0) === '@';
       if(startsWithAt) query = query.slice(1);
 
       const index = new SearchIndex<number>(!startsWithAt, !startsWithAt); */
       const index = new SearchIndex<PeerId>({
-        ignoreCase: true
+        ignoreCase: true,
       });
 
       const ratingMap: Map<PeerId, number> = new Map();
       topPeers.forEach((peer) => {
-        index.indexObject(peer.id, this.appUsersManager.getUserSearchText(peer.id));
+        index.indexObject(
+          peer.id,
+          this.appUsersManager.getUserSearchText(peer.id)
+        );
         ratingMap.set(peer.id, peer.rating);
       });
 
@@ -490,16 +630,24 @@ export class AppProfileManager extends AppManager {
 
     let promise: Promise<PeerId[]>;
     if (this.appChatsManager.isChannel(chatId)) {
-      promise = this.getChannelParticipants(chatId, {
-        _: 'channelParticipantsMentions',
-        q: query,
-        top_msg_id: getServerMessageId(threadId)
-      }, 50, 0).then((cP) => {
+      promise = this.getChannelParticipants(
+        chatId,
+        {
+          _: "channelParticipantsMentions",
+          q: query,
+          top_msg_id: getServerMessageId(threadId),
+        },
+        50,
+        0
+      ).then((cP) => {
         return cP.participants.map((p) => getParticipantPeerId(p));
       });
     } else if (chatId) {
       promise = Promise.resolve(this.getChatFull(chatId)).then((chatFull) => {
-        return ((chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants).participants.map((p) => p.user_id.toPeerId());
+        return (
+          (chatFull as ChatFull.chatFull)
+            .participants as ChatParticipants.chatParticipants
+        ).participants.map((p) => p.user_id.toPeerId());
       });
     } else {
       promise = Promise.resolve([]);
@@ -507,17 +655,25 @@ export class AppProfileManager extends AppManager {
 
     return Promise.all([
       // [],
-      this.appUsersManager.getTopPeers('bots_inline').catch(() => [] as MyTopPeer[]),
-      promise
+      this.appUsersManager
+        .getTopPeers("bots_inline")
+        .catch(() => [] as MyTopPeer[]),
+      promise,
     ]).then((results) => {
-      const peers = results[0].concat(results[1].map((peerId) => ({ id: peerId, rating: 0 })));
+      const peers = results[0].concat(
+        results[1].map((peerId) => ({ id: peerId, rating: 0 }))
+      );
 
       return processUserIds(peers);
     });
   }
 
   private invalidateChannelParticipants(id: ChatId) {
-    this.apiManager.clearCache('channels.getParticipants', (params) => (params.channel as InputChannel.inputChannel).channel_id === id);
+    this.apiManager.clearCache(
+      "channels.getParticipants",
+      (params) =>
+        (params.channel as InputChannel.inputChannel).channel_id === id
+    );
     this.refreshFullPeer(id.toPeerId(true));
   }
 
@@ -525,11 +681,11 @@ export class AppProfileManager extends AppManager {
     if (peerId.isUser()) {
       const userId = peerId.toUserId();
       delete this.usersFull[userId];
-      this.rootScope.dispatchEvent('user_full_update', userId);
+      this.rootScope.dispatchEvent("user_full_update", userId);
     } else {
       const chatId = peerId.toChatId();
       delete this.chatsFull[chatId];
-      this.rootScope.dispatchEvent('chat_full_update', chatId);
+      this.rootScope.dispatchEvent("chat_full_update", chatId);
     }
 
     // ! эта строчка будет создавать race condition:
@@ -537,85 +693,95 @@ export class AppProfileManager extends AppManager {
     // this.getProfileByPeerId(peerId, true);
   }
 
-  public updateProfile(first_name?: string, last_name?: string, about?: string) {
-    return this.apiManager.invokeApi('account.updateProfile', {
-      first_name,
-      last_name,
-      about
-    }).then((user) => {
-      this.appUsersManager.saveApiUser(user);
+  public updateProfile(
+    first_name?: string,
+    last_name?: string,
+    about?: string
+  ) {
+    return this.apiManager
+      .invokeApi("account.updateProfile", {
+        first_name,
+        last_name,
+        about,
+      })
+      .then((user) => {
+        this.appUsersManager.saveApiUser(user);
 
-      if (about !== undefined) {
-        const peerId = user.id.toPeerId();
-        const userFull = this.usersFull[user.id];
-        if (userFull) {
-          userFull.about = about;
+        if (about !== undefined) {
+          const peerId = user.id.toPeerId();
+          const userFull = this.usersFull[user.id];
+          if (userFull) {
+            userFull.about = about;
+          }
+
+          this.rootScope.dispatchEvent("peer_bio_edit", peerId);
         }
 
-        this.rootScope.dispatchEvent('peer_bio_edit', peerId);
-      }
-
-      return this.getProfile(user.id, true);
-    });
+        return this.getProfile(user.id, true);
+      });
   }
 
   public uploadProfilePhoto(inputFile: InputFile) {
-    return this.apiManager.invokeApi('photos.uploadProfilePhoto', {
-      file: inputFile
-    }).then((updateResult) => {
-      // ! sometimes can have no user in users
-      const photo = updateResult.photo as Photo.photo;
-      if (!updateResult.users.length) {
-        const strippedThumb = photo.sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
-        updateResult.users.push({
-          ...this.appUsersManager.getSelf(),
-          photo: {
-            _: 'userProfilePhoto',
-            dc_id: photo.dc_id,
-            photo_id: photo.id,
-            stripped_thumb: strippedThumb?.bytes,
-            pFlags: {
+    return this.apiManager
+      .invokeApi("photos.uploadProfilePhoto", {
+        file: inputFile,
+      })
+      .then((updateResult) => {
+        // ! sometimes can have no user in users
+        const photo = updateResult.photo as Photo.photo;
+        if (!updateResult.users.length) {
+          const strippedThumb = photo.sizes.find(
+            (size) => size._ === "photoStrippedSize"
+          ) as PhotoSize.photoStrippedSize;
+          updateResult.users.push({
+            ...this.appUsersManager.getSelf(),
+            photo: {
+              _: "userProfilePhoto",
+              dc_id: photo.dc_id,
+              photo_id: photo.id,
+              stripped_thumb: strippedThumb?.bytes,
+              pFlags: {},
+            },
+          });
+        }
+        this.appUsersManager.saveApiUsers(updateResult.users);
 
-            }
-          }
+        const myId = this.appPeersManager.peerId;
+        this.appPhotosManager.savePhoto(updateResult.photo, {
+          type: "profilePhoto",
+          peerId: myId,
         });
-      }
-      this.appUsersManager.saveApiUsers(updateResult.users);
 
-      const myId = this.appPeersManager.peerId;
-      this.appPhotosManager.savePhoto(updateResult.photo, {
-        type: 'profilePhoto',
-        peerId: myId
+        const userId = myId.toUserId();
+        this.apiUpdatesManager.processLocalUpdate({
+          _: "updateUserPhoto",
+          user_id: userId,
+          date: tsNow(true),
+          photo: this.appUsersManager.getUser(userId).photo,
+          previous: true,
+        });
       });
-
-      const userId = myId.toUserId();
-      this.apiUpdatesManager.processLocalUpdate({
-        _: 'updateUserPhoto',
-        user_id: userId,
-        date: tsNow(true),
-        photo: this.appUsersManager.getUser(userId).photo,
-        previous: true
-      });
-    });
   }
 
   public deletePhotos(photoIds: string[]) {
-    return this.apiManager.invokeApiSingle('photos.deletePhotos', {
-      id: photoIds.map((photoId) => {
-        const photo = this.appPhotosManager.getPhoto(photoId);
-        return getPhotoInput(photo);
+    return this.apiManager
+      .invokeApiSingle("photos.deletePhotos", {
+        id: photoIds.map((photoId) => {
+          const photo = this.appPhotosManager.getPhoto(photoId);
+          return getPhotoInput(photo);
+        }),
       })
-    }).then((deletedList) => {
-
-    });
+      .then((deletedList) => {});
   }
 
   private verifyParticipantForOnlineCount(participant: { user_id: UserId }) {
     const user = this.appUsersManager.getUser(participant.user_id);
-    return !!(user && user.status && user.status._ === 'userStatusOnline');
+    return !!(user && user.status && user.status._ === "userStatusOnline");
   }
 
-  private reduceParticipantsForOnlineCount(participants: { user_id: UserId }[]) {
+  private reduceParticipantsForOnlineCount(
+    participants: { user_id: UserId }[]
+  ) {
     return participants.reduce((acc, participant) => {
       return acc + +this.verifyParticipantForOnlineCount(participant);
     }, 0);
@@ -630,19 +796,30 @@ export class AppProfileManager extends AppManager {
     const chatInfo = await this.getChatFull(id);
     if (this.appChatsManager.isMegagroup(id)) {
       if ((chatInfo as ChatFull.channelFull).participants_count <= 100) {
-        const channelParticipants = await this.getChannelParticipants(id, { _: 'channelParticipantsRecent' }, 100);
-        return this.reduceParticipantsForOnlineCount(channelParticipants.participants as ChannelParticipant.channelParticipant[]);
+        const channelParticipants = await this.getChannelParticipants(
+          id,
+          { _: "channelParticipantsRecent" },
+          100
+        );
+        return this.reduceParticipantsForOnlineCount(
+          channelParticipants.participants as ChannelParticipant.channelParticipant[]
+        );
       }
 
-      const res = await this.apiManager.invokeApiCacheable('messages.getOnlines', {
-        peer: this.appChatsManager.getChannelInputPeer(id)
-      }, { cacheSeconds: 60 });
+      const res = await this.apiManager.invokeApiCacheable(
+        "messages.getOnlines",
+        {
+          peer: this.appChatsManager.getChannelInputPeer(id),
+        },
+        { cacheSeconds: 60 }
+      );
 
       const onlines = res.onlines ?? minOnline;
       return onlines;
     }
 
-    const _participants = (chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    const _participants = (chatInfo as ChatFull.chatFull)
+      .participants as ChatParticipants.chatParticipants;
     if (_participants?.participants) {
       return this.reduceParticipantsForOnlineCount(_participants.participants);
     } else {
@@ -650,16 +827,27 @@ export class AppProfileManager extends AppManager {
     }
   }
 
-  private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
-    const fromId = (update as Update.updateUserTyping).user_id ?
-      (update as Update.updateUserTyping).user_id.toPeerId() :
-      this.appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
-    if (this.appPeersManager.peerId === fromId || update.action._ === 'speakingInGroupCallAction') {
+  private onUpdateUserTyping = (
+    update:
+      | Update.updateUserTyping
+      | Update.updateChatUserTyping
+      | Update.updateChannelUserTyping
+  ) => {
+    const fromId = (update as Update.updateUserTyping).user_id
+      ? (update as Update.updateUserTyping).user_id.toPeerId()
+      : this.appPeersManager.getPeerId(
+          (update as Update.updateChatUserTyping).from_id
+        );
+    if (
+      this.appPeersManager.peerId === fromId ||
+      update.action._ === "speakingInGroupCallAction"
+    ) {
       return;
     }
 
     const peerId = this.appPeersManager.getPeerId(update);
-    const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
+    const typings =
+      this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
     let typing = typings.find((t) => t.userId === fromId);
 
     const cancelAction = () => {
@@ -670,7 +858,7 @@ export class AppProfileManager extends AppManager {
         typings.splice(idx, 1);
       }
 
-      this.rootScope.dispatchEvent('peer_typings', { peerId, typings });
+      this.rootScope.dispatchEvent("peer_typings", { peerId, typings });
 
       if (!typings.length) {
         delete this.typingsInPeer[peerId];
@@ -681,7 +869,7 @@ export class AppProfileManager extends AppManager {
       clearTimeout(typing.timeout);
     }
 
-    if (update.action._ === 'sendMessageCancelAction') {
+    if (update.action._ === "sendMessageCancelAction") {
       if (!typing) {
         return;
       }
@@ -692,7 +880,7 @@ export class AppProfileManager extends AppManager {
 
     if (!typing) {
       typing = {
-        userId: fromId
+        userId: fromId,
       };
 
       typings.push(typing);
@@ -705,11 +893,18 @@ export class AppProfileManager extends AppManager {
     const hasUser = this.appUsersManager.hasUser(fromId);
     if (!hasUser) {
       // let's load user here
-      if (update._ === 'updateChatUserTyping') {
-        if (update.chat_id && this.appChatsManager.hasChat(update.chat_id) && !this.appChatsManager.isChannel(update.chat_id)) {
+      if (update._ === "updateChatUserTyping") {
+        if (
+          update.chat_id &&
+          this.appChatsManager.hasChat(update.chat_id) &&
+          !this.appChatsManager.isChannel(update.chat_id)
+        ) {
           Promise.resolve(this.getChatFull(update.chat_id)).then(() => {
-            if (typing.timeout !== undefined && this.appUsersManager.hasUser(fromId)) {
-              this.rootScope.dispatchEvent('peer_typings', { peerId, typings });
+            if (
+              typing.timeout !== undefined &&
+              this.appUsersManager.hasUser(fromId)
+            ) {
+              this.rootScope.dispatchEvent("peer_typings", { peerId, typings });
             }
           });
         }
@@ -722,7 +917,7 @@ export class AppProfileManager extends AppManager {
 
     typing.timeout = ctx.setTimeout(cancelAction, 6000);
     if (hasUser) {
-      this.rootScope.dispatchEvent('peer_typings', { peerId, typings });
+      this.rootScope.dispatchEvent("peer_typings", { peerId, typings });
     }
   };
 
@@ -736,10 +931,13 @@ export class AppProfileManager extends AppManager {
         else delete userFull.pFlags.blocked;
       }
 
-      this.rootScope.dispatchEvent('user_full_update', userId);
+      this.rootScope.dispatchEvent("user_full_update", userId);
     }
 
-    this.rootScope.dispatchEvent('peer_block', { peerId, blocked: update.blocked });
+    this.rootScope.dispatchEvent("peer_block", {
+      peerId,
+      blocked: update.blocked,
+    });
   };
 
   public getPeerTypings(peerId: PeerId) {

@@ -1969,7 +1969,7 @@ $bubble-border-radius-big: 12px;
     height: 2.5rem;
     padding: 0 1rem;
     background-color: rgba(0, 0, 0, .3);
-    backdrop-filter: var(--menu-backdrop-filter);
+    // backdrop-filter: var(--menu-backdrop-filter);
     font-weight: var(--font-weight-bold);
     color: #fff;
     z-index: 2;

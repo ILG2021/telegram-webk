@@ -330,7 +330,7 @@ export class AppSidebarLeft extends SidebarSlider {
     };
     appNavigationController.pushItem(navigationItem);
 
-    apiManagerProxy.getState().then((state) => {
+    /* apiManagerProxy.getState().then((state) => {
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -347,7 +347,7 @@ export class AppSidebarLeft extends SidebarSlider {
         })
         .catch(noop);
       }, CHECK_UPDATE_INTERVAL);
-    });
+    }); */
   }
 
   private initSearch() {

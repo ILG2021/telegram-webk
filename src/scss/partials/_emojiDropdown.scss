@@ -36,7 +36,7 @@ $menu-transition-duration: .2s;
 		transform: scale(0);
 		opacity: 0;
 		transform-origin: 0 100%;
-    backdrop-filter: var(--menu-backdrop-filter);
+    // backdrop-filter: var(--menu-backdrop-filter);
     background-color: var(--menu-background-color);
     // background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
 

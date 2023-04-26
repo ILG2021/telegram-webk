@@ -754,7 +754,7 @@ input:-webkit-autofill:active {
   z-index: 5;
   max-width: unquote('min(30rem, calc(100vw - 2rem))');
   opacity: 0;
-  backdrop-filter: blur(25px);
+  // backdrop-filter: blur(25px);
 
   &.is-visible {
     opacity: 1;
